@@ -355,7 +355,7 @@ class MainWindow(QtGui.QMainWindow):
                                       self.coincidencecheckbox_1,
                                       self.coincidencecheckbox_2,
                                       self.coincidencecheckbox_3],
-                                     self.vetocheckbox
+                                     self.vetocheckbox,
                                      [self.vetocheckbox_0,
                                       self.vetocheckbox_1,
                                       self.vetocheckbox_2])
@@ -701,7 +701,7 @@ class MainWindow(QtGui.QMainWindow):
             daq_widget.calculate()
             
             gps_widget = get_widget("gps")
-            
+
             if (gps_widget.active and
                     gps_widget.isEnabled()):
                 if len(gps_widget.gps_dump) <= gps_widget.read_lines:

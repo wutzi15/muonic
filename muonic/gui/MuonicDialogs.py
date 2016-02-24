@@ -469,7 +469,7 @@ class HelpDialog(BaseDialog):
 
         help_file = path.join(path.dirname(__file__), 'daq_commands_help.txt')
 
-        with open(help_file) as f:
+        with open(help_file, 'r') as f:
             help_text = f.read()
 
         text_box = QtGui.QPlainTextEdit(help_text)
@@ -494,5 +494,3 @@ if __name__ == "__main__":
     threshold_dialog = ThresholdDialog([42, 42, 42, 42])
     velocity_dialog = VelocityConfigDialog()
     sys.exit(app.exec_())
-
-

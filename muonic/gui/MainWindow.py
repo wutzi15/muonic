@@ -319,12 +319,15 @@ class MainWindow(QtGui.QMainWindow):
         # wait explicitely till the thresholds get loaded
         self.logger.info("loading threshold information..")
         time.sleep(1.5)
-        threshold_window = ThresholdDialog(self.threshold_ch0,self.threshold_ch1,self.threshold_ch2,self.threshold_ch3)
+        threshold_window = ThresholdDialog([self.threshold_ch0,
+                                           self.threshold_ch1,
+                                           self.threshold_ch2,
+                                           self.threshold_ch3])
         rv = threshold_window.exec_()
         if rv == 1:
             commands = []
             for ch in ["0","1","2","3"]:
-                val = threshold_window.findChild(QtGui.QSpinBox,QtCore.QString("thr_ch_" + ch)).value()
+                val = threshold_window.get_widget_value("threshold_ch_" + ch)
                 commands.append("TL " + ch + " " + str(val))
                 
             for cmd in commands:
@@ -332,10 +335,6 @@ class MainWindow(QtGui.QMainWindow):
                 self.logger.info("Set threshold of channel %s to %s" %(cmd.split()[1],cmd.split()[2]))
 
         self.daq.put('TL')
-
-    @staticmethod
-    def is_checked(widget, name, child_type=QtGui.QCheckBox):
-        return widget.findChild(child_type, QtCore.QString(name)).isChecked()
   
     def config_menu(self):
         """
@@ -348,29 +347,38 @@ class MainWindow(QtGui.QMainWindow):
         self.logger.info("loading channel information...")
         time.sleep(1)
 
-        config_window = ConfigDialog(self.channelcheckbox_0,self.channelcheckbox_1,self.channelcheckbox_2,self.channelcheckbox_3,self.coincidencecheckbox_0,self.coincidencecheckbox_1,self.coincidencecheckbox_2,self.coincidencecheckbox_3,self.vetocheckbox,self.vetocheckbox_0,self.vetocheckbox_1,self.vetocheckbox_2)
+        config_window = ConfigDialog([self.channelcheckbox_0,
+                                      self.channelcheckbox_1,
+                                      self.channelcheckbox_2,
+                                      self.channelcheckbox_3],
+                                     [self.coincidencecheckbox_0,
+                                      self.coincidencecheckbox_1,
+                                      self.coincidencecheckbox_2,
+                                      self.coincidencecheckbox_3],
+                                     self.vetocheckbox
+                                     [self.vetocheckbox_0,
+                                      self.vetocheckbox_1,
+                                      self.vetocheckbox_2])
         rv = config_window.exec_()
         if rv == 1:
-            # chan0_active = self.is_checked(config_window, "channelcheckbox_0")
-            chan0_active = config_window.findChild(QtGui.QCheckBox, QtCore.QString("channelcheckbox_0")).isChecked()
-            chan1_active = config_window.findChild(QtGui.QCheckBox, QtCore.QString("channelcheckbox_1")).isChecked()
-            chan2_active = config_window.findChild(QtGui.QCheckBox, QtCore.QString("channelcheckbox_2")).isChecked()
-            chan3_active = config_window.findChild(QtGui.QCheckBox, QtCore.QString("channelcheckbox_3")).isChecked()
-            # single = self.is_checked(config_window, "coincidencecheckbox_0", QtGui.QRadioButton)
-            singles = config_window.findChild(QtGui.QRadioButton, QtCore.QString("coincidencecheckbox_0")).isChecked()
+            chan0_active = config_window.get_widget_value("channel_checkbox_0")
+            chan1_active = config_window.get_widget_value("channel_checkbox_1")
+            chan2_active = config_window.get_widget_value("channel_checkbox_2")
+            chan3_active = config_window.get_widget_value("channel_checkbox_3")
+            singles = config_window.get_widget_value("coincidence_checkbox_0")
             # if singles:
             #    self.tabwidget.ratewidget.do_not_show_trigger = True
             # else:
             self.tab_widget.ratewidget.do_not_show_trigger = False
             
-            twofold = config_window.findChild(QtGui.QRadioButton, QtCore.QString("coincidencecheckbox_1")).isChecked()
-            threefold = config_window.findChild(QtGui.QRadioButton, QtCore.QString("coincidencecheckbox_2")).isChecked()
-            fourfold = config_window.findChild(QtGui.QRadioButton, QtCore.QString("coincidencecheckbox_3")).isChecked()
+            twofold = config_window.get_widget_value("coincidence_checkbox_1")
+            threefold = config_window.get_widget_value("coincidence_checkbox_2")
+            fourfold = config_window.get_widget_value("coincidence_checkbox_3")
 
-            veto = config_window.findChild(QtGui.QGroupBox, QtCore.QString("vetocheckbox")).isChecked()
-            vetochan1 = config_window.findChild(QtGui.QRadioButton, QtCore.QString("vetocheckbox_0")).isChecked()
-            vetochan2 = config_window.findChild(QtGui.QRadioButton, QtCore.QString("vetocheckbox_1")).isChecked()
-            vetochan3 = config_window.findChild(QtGui.QRadioButton, QtCore.QString("vetocheckbox_2")).isChecked()
+            veto = config_window.get_widget_value("veto_checkbox")
+            vetochan1 = config_window.get_widget_value("veto_checkbox_0")
+            vetochan2 = config_window.get_widget_value("veto_checkbox_1")
+            vetochan3 = config_window.get_widget_value("veto_checkbox_2")
             
             tmp_msg = ''
             if veto:
@@ -440,9 +448,9 @@ class MainWindow(QtGui.QMainWindow):
         adavanced_window = AdvancedDialog(self.coincidence_time, self.timewindow, self.nostatus)
         rv = adavanced_window.exec_()
         if rv == 1:
-            _timewindow = float(adavanced_window.findChild(QtGui.QDoubleSpinBox,QtCore.QString("timewindow")).value())
-            _gatewidth = bin(int(adavanced_window.findChild(QtGui.QSpinBox,QtCore.QString("gatewidth")).value())/10).replace('0b','').zfill(16)
-            _nostatus = adavanced_window.findChild(QtGui.QCheckBox,QtCore.QString("nostatus")).isChecked()
+            _timewindow = float(adavanced_window.get_widget_value("time_window"))
+            _gatewidth = bin(int(adavanced_window.get_widget_value("gate_width"))/10).replace('0b','').zfill(16)
+            _nostatus = adavanced_window.get_widget_value("write_status")
             
             _03 = format(int(_gatewidth[0:8],2),'x').zfill(2)
             _02 = format(int(_gatewidth[8:16],2),'x').zfill(2)

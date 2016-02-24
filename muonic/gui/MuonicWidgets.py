@@ -878,11 +878,12 @@ class VelocityWidget(QtGui.QWidget):
         """
         fit the muon velocity histogram
         """
-        config_dialog = FitRangeConfigDialog(upperlim = (0.,60.,self.fitrange[1]), lowerlim = (-1.,60.,self.fitrange[0]), dimension = 'ns')
+        config_dialog = FitRangeConfigDialog(
+            upper_lim= (0., 60., self.fitrange[1]), lower_lim= (-1., 60., self.fitrange[0]), dimension ='ns')
         rv = config_dialog.exec_()
         if rv == 1:
-            upper_limit  = config_dialog.findChild(QtGui.QDoubleSpinBox,QtCore.QString("upper_limit")).value()
-            lower_limit  = config_dialog.findChild(QtGui.QDoubleSpinBox,QtCore.QString("lower_limit")).value()
+            upper_limit  = config_dialog.get_widget_value("upper_limit")
+            lower_limit  = config_dialog.get_widget_value("lower_limit")
             self.fitrange = (lower_limit,upper_limit)
 
     def velocityFitClicked(self):
@@ -908,11 +909,11 @@ class VelocityWidget(QtGui.QWidget):
                 self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "The measurement is active since %s"%self.active_since.strftime('%Y-%m-%d %H:%M:%S') ,None, QtGui.QApplication.UnicodeUTF8))
 
                 for chan,ch_label in enumerate(["0","1","2","3"]):
-                    if config_dialog.findChild(QtGui.QRadioButton,QtCore.QString("uppercheckbox_" + ch_label )).isChecked():
+                    if config_dialog.get_widget_value("upper_checkbox_" + ch_label):
                         self.upper_channel = chan + 1 # ch index is shifted
                         
                 for chan,ch_label in enumerate(["0","1","2","3"]):
-                    if config_dialog.findChild(QtGui.QRadioButton,QtCore.QString("lowercheckbox_" + ch_label )).isChecked():
+                    if config_dialog.get_widget_value("lower_checkbox_" + ch_label):
                         self.lower_channel = chan + 1 #
             
                 self.logger.info("Switching off decay measurement if running!")
@@ -1073,11 +1074,12 @@ class DecayWidget(QtGui.QWidget):
         """
         fit the muon decay histogram
         """
-        config_dialog = FitRangeConfigDialog(upperlim = (0.,10.,self.fitrange[1]), lowerlim = (-1.,10.,self.fitrange[0]), dimension = 'microsecond')
+        config_dialog = FitRangeConfigDialog(
+            upper_lim= (0., 10., self.fitrange[1]), lower_lim= (-1., 10., self.fitrange[0]), dimension ='microsecond')
         rv = config_dialog.exec_()
         if rv == 1:
-            upper_limit  = config_dialog.findChild(QtGui.QDoubleSpinBox,QtCore.QString("upper_limit")).value()
-            lower_limit  = config_dialog.findChild(QtGui.QDoubleSpinBox,QtCore.QString("lower_limit")).value()
+            upper_limit  = config_dialog.get_widget_value("upper_limit")
+            lower_limit  = config_dialog.get_widget_value("lower_limit")
             self.fitrange = (lower_limit,upper_limit)
 
     def activateMuondecayClicked(self):
@@ -1095,24 +1097,24 @@ class DecayWidget(QtGui.QWidget):
                 if rv == 1:
                     self.activateMuondecay.setChecked(True)
                     self.active_since = datetime.datetime.now()
-                    chan0_single = config_window.findChild(QtGui.QRadioButton,QtCore.QString("singlecheckbox_0")).isChecked()
-                    chan1_single = config_window.findChild(QtGui.QRadioButton,QtCore.QString("singlecheckbox_1")).isChecked()
-                    chan2_single = config_window.findChild(QtGui.QRadioButton,QtCore.QString("singlecheckbox_2")).isChecked()
-                    chan3_single = config_window.findChild(QtGui.QRadioButton,QtCore.QString("singlecheckbox_3")).isChecked()
-                    chan0_double = config_window.findChild(QtGui.QRadioButton,QtCore.QString("doublecheckbox_0")).isChecked()
-                    chan1_double = config_window.findChild(QtGui.QRadioButton,QtCore.QString("doublecheckbox_1")).isChecked()
-                    chan2_double = config_window.findChild(QtGui.QRadioButton,QtCore.QString("doublecheckbox_2")).isChecked()
-                    chan3_double = config_window.findChild(QtGui.QRadioButton,QtCore.QString("doublecheckbox_3")).isChecked()
-                    chan0_veto   = config_window.findChild(QtGui.QRadioButton,QtCore.QString("vetocheckbox_0")).isChecked()
-                    chan1_veto   = config_window.findChild(QtGui.QRadioButton,QtCore.QString("vetocheckbox_1")).isChecked()
-                    chan2_veto   = config_window.findChild(QtGui.QRadioButton,QtCore.QString("vetocheckbox_2")).isChecked()
-                    chan3_veto   = config_window.findChild(QtGui.QRadioButton,QtCore.QString("vetocheckbox_3")).isChecked()
-                    self.decay_mintime   = int(config_window.mintime.value())
-                    if config_window.findChild(QtGui.QGroupBox,QtCore.QString("pulsewidthgroupbox")).isChecked():
-                        self.minsinglepulsewidth = int(config_window.findChild(QtGui.QSpinBox,QtCore.QString("minsinglepulsewidth")).value())
-                        self.maxsinglepulsewidth = int(config_window.findChild(QtGui.QSpinBox,QtCore.QString("maxsinglepulsewidth")).value())
-                        self.mindoublepulsewidth = int(config_window.findChild(QtGui.QSpinBox,QtCore.QString("mindoublepulsewidth")).value())
-                        self.maxdoublepulsewidth = int(config_window.findChild(QtGui.QSpinBox,QtCore.QString("maxdoublepulsewidth")).value())
+                    chan0_single = config_window.get_widget_value("single_checkbox_0")
+                    chan1_single = config_window.get_widget_value("single_checkbox_1")
+                    chan2_single = config_window.get_widget_value("single_checkbox_2")
+                    chan3_single = config_window.get_widget_value("single_checkbox_3")
+                    chan0_double = config_window.get_widget_value("double_checkbox_0")
+                    chan1_double = config_window.get_widget_value("double_checkbox_1")
+                    chan2_double = config_window.get_widget_value("double_checkbox_2")
+                    chan3_double = config_window.get_widget_value("double_checkbox_3")
+                    chan0_veto   = config_window.get_widget_value("veto_checkbox_0")
+                    chan1_veto   = config_window.get_widget_value("veto_checkbox_1")
+                    chan2_veto   = config_window.get_widget_value("veto_checkbox_2")
+                    chan3_veto   = config_window.get_widget_value("veto_checkbox_3")
+                    self.decay_mintime   = int(config_window.get_widget_value("min_pulse_time"))
+                    if config_window.get_widget_value("set_pulse_width_conditions"):
+                        self.minsinglepulsewidth = int(config_window.get_widget_value("min_single_pulse_width"))
+                        self.maxsinglepulsewidth = int(config_window.get_widget_value("max_single_pulse_width"))
+                        self.mindoublepulsewidth = int(config_window.get_widget_value("min_double_pulse_width"))
+                        self.maxdoublepulsewidth = int(config_window.get_widget_value("max_double_pulse_width"))
                     
                     self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "The measurement is active since %s"%self.active_since.strftime('%Y-%m-%d %H:%M:%S') ,None, QtGui.QApplication.UnicodeUTF8))
                     for channel in enumerate([chan0_single,chan1_single,chan2_single,chan3_single]):
@@ -1264,8 +1266,8 @@ class DAQWidget(QtGui.QWidget):
         periodic_window = PeriodicCallDialog()
         rv = periodic_window.exec_()
         if rv == 1:
-            period = periodic_window.time_box.value() * 1000 #We need the period in milliseconds
-            command = str(periodic_window.textbox.text())
+            period = periodic_window.get_widget_value("interval") * 1000 #We need the period in milliseconds
+            command = periodic_window.get_widget_value("command")
             commands = command.split('+')
             def periodic_put():
                 for c in commands:

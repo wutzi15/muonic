@@ -55,7 +55,7 @@ setup(name=muonic.__name__,
       keywords=["QNET", "QuarkNET", "Fermilab", "DESY", "DAQ"],
       packages=['muonic', 'muonic.analysis', 'muonic.gui', 'muonic.daq'],
       scripts=['bin/muonic', 'bin/which_tty_daq'],
-      package_data={'muonic': ['daq/simdaq.txt'], '': ['*.txt', '*.rst']},
+      package_data={'muonic': ['daq/simdaq.txt', 'gui/daq_commands_help.txt'], '': ['*.txt', '*.rst']},
       # package_data={'' : ['docs/*','README'], 'muonic': ['daq/simdaq.txt','daq/which_tty_daq']},
       data_files=[(data_path, [])]
       #,(datapath,["muonic/docs/build/man/muonic.1"]),(os.path.join(datapath,"muonic/docs/html"),glob("muonic/docs/build/html/*html")),(os.path.join(datapath,"muonic/docs/html/_static"),glob("muonic/docs/build/html/_static/*")),(os.path.join(datapath,"muonic/docs/html/_modules"),glob("muonic/docs/build/html/_modules/*html")),(os.path.join(datapath,"muonic/docs/html/_sources"),glob("muonic/docs/build/html/_sources/*html")),(os.path.join(datapath,"muonic/docs/html/_modules/muonic/"), glob("muonic/docs/build/html/_modules/muonic/*html")),(os.path.join(datapath,"muonic/docs/html/_modules/muonic/gui"),glob("muonic/docs/build/html/_modules/muonic/*html")),(os.path.join(datapath,"muonic/docs/html/_modules/muonic/daq"),glob("muonic/docs/build/html/_modules/muonic/daq/*html")),(os.path.join(datapath,"muonic/docs/html/_modules/muonic/analysis"), glob("muonic/docs/build/html/_modules/muonic/analysis/*html"))]

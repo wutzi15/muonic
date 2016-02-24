@@ -2,16 +2,16 @@
 Provide the dialog fields for user interaction
 """
 
-
 from PyQt4 import QtCore, QtGui
+
 
 class MuonicDialog(QtGui.QDialog):
     """
     Base class of all muonic dialogs
     """
     
-    def __init__(self):
-        pass
+    def __init__(self, *args):
+        QtGui.QDialog.__init__(self)
     
     def createButtonBox(self,objectname="buttonBox",leftoffset=80,topoffset=900):
         """
@@ -64,14 +64,15 @@ class MuonicDialog(QtGui.QDialog):
         groupBox.setLayout(vbox)
         return groupBox
 
+
 class DecayConfigDialog(MuonicDialog):
     """
     Settings for the muondecay
     """
     
-    def __init__(self, *args):
+    def __init__(self):
+        MuonicDialog.__init__(self)
 
-        QtGui.QDialog.__init__(self,*args)
 
         # size of window etc..
         self.setObjectName("Configure")
@@ -155,10 +156,12 @@ class DecayConfigDialog(MuonicDialog):
         grid.addWidget(self.buttonBox,4,2)
         self.setLayout(grid)
         self.show()
+
+
 class FitRangeConfigDialog(MuonicDialog):
 
-        def __init__(self, upperlim = None, lowerlim = None, dimension = '', *args):
-            QtGui.QDialog.__init__(self,*args)
+        def __init__(self, upperlim = None, lowerlim = None, dimension = ''):
+            MuonicDialog.__init__(self)
 
             #self.resize(480, 360)
             self.setModal(True)
@@ -201,11 +204,11 @@ class FitRangeConfigDialog(MuonicDialog):
             self.setLayout(grid)
             self.show()
 
+
 class VelocityConfigDialog(MuonicDialog):
 
-    def __init__(self, *args):
-
-        QtGui.QDialog.__init__(self,*args)
+    def __init__(self):
+        MuonicDialog.__init__(self)
 
         #self.resize(480, 360)
         self.setModal(True)
@@ -225,13 +228,15 @@ class VelocityConfigDialog(MuonicDialog):
         self.setLayout(grid)
         self.show()
 
+
 class PeriodicCallDialog(MuonicDialog):
     """
     Issue a command periodically
     """
 
-    def __init__(self, *args):
-        QtGui.QDialog.__init__(self,*args)
+    def __init__(self):
+        MuonicDialog.__init__(self)
+
         self.setModal(True)
         self.v_box = QtGui.QVBoxLayout()
         self.textbox = QtGui.QLineEdit()
@@ -267,9 +272,8 @@ class ThresholdDialog(MuonicDialog):
     Set the Thresholds
     """
 
-    def __init__(self,thr0,thr1,thr2,thr3, *args):
-
-        QtGui.QDialog.__init__(self,*args)
+    def __init__(self, thr0, thr1, thr2, thr3):
+        MuonicDialog.__init__(self)
 
         #dimension = QtCore.QSize()
 
@@ -308,14 +312,26 @@ class ThresholdDialog(MuonicDialog):
         self.adjustSize()
         self.show()
 
+
 class ConfigDialog(MuonicDialog):
     """
     Set Channel configuration
     """
     
-    def __init__(self,channelcheckbox_0 = True,channelcheckbox_1 = True,channelcheckbox_2 = True,channelcheckbox_3 = True,coincidencecheckbox_0 = True,coincidencecheckbox_1 = False,coincidencecheckbox_2 = False,coincidencecheckbox_3 = False,vetocheckbox = False,vetocheckbox_0 = False,vetocheckbox_1 = False,vetocheckbox_2 = False, *args):
+    def __init__(self, channelcheckbox_0=True,
+                 channelcheckbox_1=True,
+                 channelcheckbox_2=True,
+                 channelcheckbox_3=True,
+                 coincidencecheckbox_0=True,
+                 coincidencecheckbox_1=False,
+                 coincidencecheckbox_2=False,
+                 coincidencecheckbox_3=False,
+                 vetocheckbox=False,
+                 vetocheckbox_0=False,
+                 vetocheckbox_1=False,
+                 vetocheckbox_2=False):
 
-        QtGui.QDialog.__init__(self,*args)
+        MuonicDialog.__init__(self)
 
         self.setObjectName("Configure")
         self.setModal(True)
@@ -358,9 +374,9 @@ class AdvancedDialog(MuonicDialog):
     Set Configuration dialog
     """
     
-    def __init__(self,gatewidth = 100, timewindow = 5.0, nostatus = None, *args):
+    def __init__(self, gatewidth=100, timewindow=5.0, nostatus=None):
 
-        QtGui.QDialog.__init__(self,*args)
+        MuonicDialog.__init__(self)
 
         self.setObjectName("Configure")
         self.setModal(True)
@@ -412,11 +428,11 @@ class AdvancedDialog(MuonicDialog):
         
         self.show()
 
+
 class HelpDialog(MuonicDialog): 
 
-    def __init__(self, *args):
-        _NAME = 'Help'
-        QtGui.QDialog.__init__(self,*args)
+    def __init__(self):
+        MuonicDialog.__init__(self)
         self.resize(600, 480)
         self.setModal(True)
         self.setWindowTitle("DAQ Commands")
@@ -560,9 +576,9 @@ if __name__ == "__main__":
     import sys
 
     app = QtGui.QApplication(sys.argv)
-    dialog  = ConfigDialog()
+    dialog = ConfigDialog()
     ddialog = DecayConfigDialog()
-    tdialog = ThresholdDialog(42,42,42,42)
+    tdialog = ThresholdDialog(42, 42, 42, 42)
     vdialog = VelocityConfigDialog()
     sys.exit(app.exec_())
 

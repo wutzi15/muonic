@@ -8,14 +8,20 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 
 #muonic imports
+from muonic import DATA_PATH
+
 from .LineEdit import LineEdit
 from .MuonicPlotCanvases import ScalarsCanvas,LifetimeCanvas,PulseCanvas,VelocityCanvas,PulseWidthCanvas
 from .MuonicDialogs import DecayConfigDialog,PeriodicCallDialog, VelocityConfigDialog, FitRangeConfigDialog
 from ..analysis.fit import main as fit
 from ..analysis.fit import gaussian_fit
 from ..analysis.PulseAnalyzer import VelocityTrigger,DecayTriggerThorough
-from matplotlib.backends.backend_qt4agg \
-import NavigationToolbar2QTAgg as NavigationToolbar
+try:
+    from matplotlib.backends.backend_qt4agg \
+        import NavigationToolbar2QTAgg as NavigationToolbar
+except ImportError:
+    from matplotlib.backends.backend_qt4agg \
+        import NavigationToolbar2QT as NavigationToolbar
 
 import datetime
 
@@ -348,10 +354,10 @@ class RateWidget(QtGui.QWidget):
                 %date.strftime('%Y-%m-%d_%H-%M-%S')
 
         #FIXME: This does not belong here
-        #if self.mainwindow.tabwidget.decaywidget.active:
+        #if self.mainwindow.tab_widget.decaywidget.active:
         #    comment_file = '# new decay measurement run from: %i-%i-%i %i-%i-%i\n'\
         #                   %(date.tm_year,date.tm_mon,date.tm_mday,date.tm_hour,date.tm_min,date.tm_sec)
-        #if self.mainwindow.tabwidget.velocitywidget.active:
+        #if self.mainwindow.tab_widget.velocitywidget.active:
         #    comment_file = '# new velocity measurement run from: %i-%i-%i %i-%i-%i\n'\
         #                   %(date.tm_year,date.tm_mon,date.tm_mday,date.tm_hour,date.tm_min,date.tm_sec)
 
@@ -479,7 +485,7 @@ class PulseanalyzerWidget(QtGui.QWidget):
             self.mainwindow.daq.put('CE')
             if not self.pulsefile:
                 self.mainwindow.pulsefilename = \
-                        os.path.join(self.mainwindow.DATAPATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
+                        os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
                                                                    "P",
                                                                    self.mainwindow.opts.user[0],
                                                                    self.mainwindow.opts.user[1]) )
@@ -667,7 +673,7 @@ class StatusWidget(QtGui.QWidget): # not used yet
         self.mainwindow.daq.put('DC')
         time.sleep(0.5)
         self.active = True
-        self.mainwindow.processIncoming()
+        self.mainwindow.process_incoming()
 
     def on_save_clicked(self):
         """
@@ -682,13 +688,13 @@ class StatusWidget(QtGui.QWidget): # not used yet
         Fill the status information in the widget.
         """
         self.logger.debug("Refreshing status infos")
-        if (self.mainwindow.tabwidget.statuswidget.isVisible()):
+        if (self.mainwindow.tab_widget.statuswidget.isVisible()):
             self.muonic_stats['start_params'] = str(self.mainwindow.opts).replace('{', '').replace('}','')
             self.muonic_stats['refreshtime'] = str(self.mainwindow.timewindow)+ ' s'
             self.muonic_stats['last_path'] = 'too'
-            if self.mainwindow.tabwidget.decaywidget.active:
+            if self.mainwindow.tab_widget.decaywidget.active:
                 self.muonic_stats['decay_veto'] =\
-                    'software veto with channel %d' % (self.mainwindow.tabwidget.decaywidget.vetopulsechannel-1)
+                    'software veto with channel %d' % (self.mainwindow.tab_widget.decaywidget.vetopulsechannel-1)
             
             self.daq_stats['thresholds'][0] = str(self.mainwindow.threshold_ch0)+ ' mV'
             self.daq_stats['thresholds'][1] = str(self.mainwindow.threshold_ch1)+ ' mV'
@@ -738,9 +744,9 @@ class StatusWidget(QtGui.QWidget): # not used yet
             self.decay_veto.setEnabled(True)
             
             self.muonic_stats['open_files'] = str(self.mainwindow.filename)
-            if self.mainwindow.tabwidget.daqwidget.write_file:
+            if self.mainwindow.tab_widget.daqwidget.write_file:
                 self.muonic_stats['open_files'] += ', ' + self.mainwindow.rawfilename
-            if self.mainwindow.tabwidget.decaywidget.active:
+            if self.mainwindow.tab_widget.decaywidget.active:
                 self.muonic_stats['open_files'] += ', ' + self.mainwindow.decayfilename
             if self.mainwindow.writepulses:
                 self.muonic_stats['open_files'] += ', ' + self.mainwindow.pulsefilename
@@ -753,18 +759,18 @@ class StatusWidget(QtGui.QWidget): # not used yet
             #self.last_path.setText(self.muonic_stats['last_path'])
             #self.last_path.setEnabled(True)
             measurements = ''
-            if self.mainwindow.tabwidget.ratewidget.active:
+            if self.mainwindow.tab_widget.ratewidget.active:
                 measurements += 'Muon Rates'
-            if self.mainwindow.tabwidget.decaywidget.active:
+            if self.mainwindow.tab_widget.decaywidget.active:
                 if len(measurements) > 0:
                     measurements += ', '
                 measurements += 'Muon Decay'
                 self.decay_veto.setText(self.muonic_stats['decay_veto'])
-            if self.mainwindow.tabwidget.velocitywidget.active:
+            if self.mainwindow.tab_widget.velocitywidget.active:
                 if len(measurements) > 0:
                     measurements += ', '
                 measurements += 'Muon Velocity'
-            if self.mainwindow.tabwidget.pulseanalyzerwidget.active:
+            if self.mainwindow.tab_widget.pulseanalyzerwidget.active:
                 if len(measurements) > 0:
                     measurements += ', '
                 measurements += 'Pulse Analyzer' 
@@ -917,7 +923,7 @@ class VelocityWidget(QtGui.QWidget):
                 self.parentWidget().parentWidget().ratewidget.startClicked()
                 if not self.pulsefile:
                     self.mainwindow.pulsefilename = \
-                            os.path.join(self.mainwindow.DATAPATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
+                            os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
                                                                        "P",
                                                                        self.mainwindow.opts.user[0],
                                                                        self.mainwindow.opts.user[1]) )
@@ -942,7 +948,7 @@ class VelocityWidget(QtGui.QWidget):
                     self.mainwindow.pulseextractor.pulsefile.close()
                 self.mainwindow.pulseextractor.pulsefile = False
 
-            self.mainwindow.tabwidget.ratewidget.stopClicked()  
+            self.mainwindow.tab_widget.ratewidget.stopClicked()  
 
 class DecayWidget(QtGui.QWidget):
     
@@ -1153,7 +1159,7 @@ class DecayWidget(QtGui.QWidget):
                     self.pulsefile = self.mainwindow.pulseextractor.pulsefile
                     if not self.pulsefile:
                         self.mainwindow.pulsefilename = \
-                            os.path.join(self.mainwindow.DATAPATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
+                            os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
                                                                        "P",
                                                                        self.mainwindow.opts.user[0],
                                                                        self.mainwindow.opts.user[1]) )
@@ -1390,10 +1396,10 @@ class GPSWidget(QtGui.QWidget):
         self.refresh_button.setEnabled(False)
         self.gps_dump = [] 
         self.logger.info('Reading GPS.')
-        self.mainwindow.processIncoming()
+        self.mainwindow.process_incoming()
         self.switch_active(True)        
         self.mainwindow.daq.put('DG')
-        self.mainwindow.processIncoming()
+        self.mainwindow.process_incoming()
         #for count in range(self.read_lines):
         #    msg = self.mainwindow.inqueue.get(True)
         #    self.gps_dump.append(msg)

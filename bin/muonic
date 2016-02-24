@@ -30,12 +30,23 @@ import sys
 
 from PyQt4 import QtGui
 
+from muonic import __version__, DATA_PATH
 from muonic.daq import DAQClient, DAQProvider
 from muonic.gui import MainWindow
-from muonic import __version__, DATA_PATH
+from muonic.util.settings_store import apply_default_settings
+from muonic.util.helpers import setup_data_directory
 
 
 def main(args, logger):
+    """
+    Application entry point
+
+    :param args: arguments
+    :param logger: logger object
+    """
+    setup_data_directory()
+    apply_default_settings()
+
     root = QtGui.QApplication(sys.argv)
     root.setQuitOnLastWindowClosed(True)
 

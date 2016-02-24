@@ -23,6 +23,8 @@ def add_widget(name, widget):
     :returns: None
     :raises: WidgetWithNameExistsError, TypeError
     """
+    global _widgets
+
     if widget is None:
         return
     if have_widget(name):

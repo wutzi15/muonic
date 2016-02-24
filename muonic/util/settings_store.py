@@ -5,6 +5,26 @@ Global application settings
 __all__ = ["update_setting", "have_setting", "get_setting",
            "remove_setting", "update_settings"]
 
+_default_settings = {
+    "write_pulses": False,
+    "write_daq_status": False,
+    "time_window": 5.0,
+    "coincidence_time": 0.0,
+    "veto": False,
+    "veto_ch0": False,
+    "veto_ch1": False,
+    "veto_ch2": False,
+    "veto_ch3": False,
+    "active_ch0": True,
+    "active_ch1": True,
+    "active_ch2": True,
+    "active_ch3": True,
+    "coincidence0": True,
+    "coincidence1": False,
+    "coincidence2": False,
+    "coincidence3": False
+}
+
 _settings = dict()
 
 
@@ -18,6 +38,8 @@ def update_setting(key, value):
     :type value: object
     :returns: None
     """
+    global _settings
+
     if key is not None:
         _settings[key] = value
 
@@ -69,4 +91,14 @@ def update_settings(settings):
         for key, value in list(settings.items()):
             update_setting(key, value)
     else:
-        raise TypeError("argmument has to be a dict")
+        raise TypeError("argument has to be a dict")
+
+
+def apply_default_settings():
+    """
+    Apply default settings. Settings keys different from the default settings
+    will retain.
+
+    :returns: None
+    """
+    update_settings(_default_settings)

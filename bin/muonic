@@ -1,5 +1,5 @@
-#! /usr/bin/env python
-
+#!/usr/bin/env python
+#
 # This file is part of muonic, a program to work with the QuarkDAQ cards
 # Copyright (C) 2009  Robert Franke (robert.franke@desy.de)
 #
@@ -7,99 +7,121 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-
+#
 # muonic is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with muonic. If not, see <http://www.gnu.org/licenses/>.
-
-
+#
 # The way of the communication between the serial port and the GUI is based on
 # the receipt presented at http://code.activestate.com/recipes/82965/
 # Created by Jacob Hallen, AB Strakt, Sweden. 2001-10-17
 # Adapted by Boudewijn Rempt, Netherlands. 2002-04-15
 # It is licenced under the Python licence, http://www.python.org/psf/license/
 
-# python std lib imports
-import sys
+from __future__ import print_function
+from argparse import ArgumentParser, RawTextHelpFormatter
 import logging
-from optparse import OptionParser
+import signal
+import sys
 
-# PyQt4 imports
 from PyQt4 import QtGui
 
-# muonic imports
-from muonic.daq.DAQProvider import DAQProvider,DAQClient
-from muonic.gui.MainWindow import MainWindow
+from muonic.daq import DAQClient, DAQProvider
+from muonic.gui import MainWindow
+from muonic import __version__, DATA_PATH
 
-from muonic.__version__ import __version__
 
-def main(opts,logger):
-
+def main(args, logger):
     root = QtGui.QApplication(sys.argv)
     root.setQuitOnLastWindowClosed(True)
-    if opts.port is not None:
-        client = DAQClient(opts.port,logger=logger)
+
+    if args.port is not None:
+        daq = DAQClient(port=args.port, logger=logger)
     else:
-        client = DAQProvider(logger=logger,sim=opts.sim)
+        daq = DAQProvider(sim=args.sim, logger=logger)
+
     # Set up the GUI part
-    gui=MainWindow(client, logger, opts)
+    gui = MainWindow(daq, logger, args)
     gui.show()
     root.exec_()
 
-
 if __name__ == '__main__':
+    # handle ctrl+c
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+    description = """
+This program is dedicated for the use with QNet DAQ cards.
+YOURINITIALS are two letters indicating your name.
+All files will be stored in:
+  %s
+Files are named by the following scheme:
+  YYYY-MM-DD_HH-MM-SS_X_Y_YOURINITIALS
+where X is the data type of the file:
+  R:   Rate plot
+  P:   Extracted pulses
+  RAW: Raw daq data
+  L:   Muon decay times
+  G:   Muon velocity measurement
+and Y will be the total measurement time""" % DATA_PATH
 
-    usage = """%prog [options] YOURINITIALS
-               This program is dedicated for the use with QNet DAQ cards
-               YOURINITIALS are two letters indicating your name
-               --> all files will be stored in ../data with the following naming scheme
-               YYYY-MM-DD_HH-MM-SS_X_Y_YOURINITIALS
-               where X is the datatype of the file:
-               R:   Rate plot
-               P:   Extracted pulses
-               RAW: Raw daq data
-               L:   Muon decay times
-               G:   Muon velocity measurement
-               and Y will be the total measurement time"""
+    parser = ArgumentParser(description=description,
+                            formatter_class=RawTextHelpFormatter)
 
-    parser = OptionParser(usage=usage)
+    parser.add_argument('user', metavar='YOURINITIALS',
+                        help='your initials',
+                        type=str, nargs=1)
+    parser.add_argument("-s", "--sim", dest="sim",
+                        help="use simulation mode for testing without " +
+                             "hardware",
+                        action="store_true", default=False)
+    parser.add_argument("--port", dest="port",
+                        help="listen to daq on port ", default=None)
+    parser.add_argument("-t", "--timewindow", dest="timewindow",
+                        help="time window for the measurement in s " +
+                             "(default 5s)",
+                        type=float, default=5.0)
+    parser.add_argument("-d", "--debug", dest="loglevel",
+                        help="switch to loglevel debug",
+                        action="store_const", const=logging.DEBUG,
+                        default=logging.INFO)
+    parser.add_argument("-p", "--writepulses", dest="writepulses",
+                        help="write a file with extracted pulses",
+                        action="store_true", default=False)
+    parser.add_argument("-n", "--nostatus", dest="nostatus",
+                        help="do not write DAQ status messages to RAW " +
+                             "data files",
+                        action="store_true", default=False)
+    parser.add_argument("-v", "--version", dest="version",
+                        help="show current version",
+                        action="store_true", default=False)
 
-    parser.add_option("-s", "--sim", action="store_true", dest="sim", help="use simulation mode for testing without hardware", default=False)
-    parser.add_option("--port", dest="port", help="listen to daq on port ", default=None)
-    parser.add_option("-t", "--timewindow", dest="timewindow", help="time window for the measurement in s (default 5 s)", default=5.0)
-    parser.add_option("-d", "--debug", dest="loglevel", action="store_const", const=10 , help="switch to loglevel debug", default=20)
-    parser.add_option("-p", "--writepulses", dest="writepulses", help="write a file with extracted pulses", action="store_true", default=False)
-    parser.add_option("-n", "--nostatus", dest="nostatus", help="do not write DAQ status messages to RAW data files", action="store_true", default=False)
-    parser.add_option("-v", "--version", dest="version", help="show current version (this might just lie to you)", action="store_true", default=False)
+    args = parser.parse_args()
 
-
-    opts, args = parser.parse_args()
-
-    if opts.version:
-        print (__version__)
+    if args.version:
+        print(__version__)
         sys.exit(0)
-    
-    if (len(args) != 1) or (len(args[0]) != 2):
-            parser.error("Incorrect number of arguments, you have to specify just the initials of your name for the filenames \n initials must be two letters!")
 
-    # small ugly hack, mixing args and options...
-    opts.user = args[0]
+    args.user = args.user[0]
+    
+    if len(args.user) != 2:
+        parser.error("Incorrect number of arguments, you have to specify " +
+                     "just the initials of your name for the file names.\n" +
+                     "Initials must be two letters!")
 
     # set up logging
-    logger = logging.getLogger()
-    logger.setLevel(int(opts.loglevel))
+    formatter = logging.Formatter("%(levelname)s:%(process)d:%(module)s:" +
+                                  "%(funcName)s:%(lineno)d:%(message)s")
     ch = logging.StreamHandler()
-    ch.setLevel(int(opts.loglevel))
-    formatter = logging.Formatter('%(levelname)s:%(process)d:%(module)s:%(funcName)s:%(lineno)d:%(message)s')
+    ch.setLevel(args.loglevel)
     ch.setFormatter(formatter)
+
+    logger = logging.getLogger()
+    logger.setLevel(args.loglevel)
     logger.addHandler(ch)
 
-
-    # make it so!
-    main(opts,logger)
-
+    # run
+    main(args, logger)

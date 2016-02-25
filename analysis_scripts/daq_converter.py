@@ -8,7 +8,7 @@
 import sys
 import re
 
-from muonic.analysis.PulseAnalyzer import PulseExtractor
+from muonic.analysis.analyzer import PulseExtractor
 
 pe = PulseExtractor()
 

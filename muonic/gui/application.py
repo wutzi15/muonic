@@ -13,14 +13,14 @@ from PyQt4 import QtCore
 from muonic import __version__, __source_location__
 from muonic import __docs_hosted_at__, __manual_hosted_at__
 from muonic import DATA_PATH
-from muonic.analysis.PulseAnalyzer import PulseExtractor
+from muonic.analysis.analyzer import PulseExtractor
 from muonic.daq import DAQIOError
 from muonic.gui.styles import LargeScreenMPStyle
-from muonic.gui.MuonicDialogs import ThresholdDialog, ConfigDialog
-from muonic.gui.MuonicDialogs import HelpDialog, AdvancedDialog
-from muonic.gui.MuonicWidgets import VelocityWidget, PulseanalyzerWidget
-from muonic.gui.MuonicWidgets import DecayWidget, DAQWidget, RateWidget
-from muonic.gui.MuonicWidgets import GPSWidget, StatusWidget
+from muonic.gui.dialogs import ThresholdDialog, ConfigDialog
+from muonic.gui.dialogs import HelpDialog, AdvancedDialog
+from muonic.gui.widgets import VelocityWidget, PulseanalyzerWidget
+from muonic.gui.widgets import DecayWidget, DAQWidget, RateWidget
+from muonic.gui.widgets import GPSWidget, StatusWidget
 from muonic.util import add_widget, get_widget, update_setting, get_setting
 
 
@@ -31,7 +31,7 @@ if not os.path.isdir(DATA_PATH):
     os.mkdir(DATA_PATH, 0755)
 
 
-class MainWindow(QtGui.QMainWindow):
+class Application(QtGui.QMainWindow):
     """
     The main application
     """
@@ -814,9 +814,13 @@ class MainWindow(QtGui.QMainWindow):
                 self.logger.info("The pulse extraction measurement was active for %f hours" % mtime)
                 newpulsefilename = old_pulsefilename.replace("HOURS",str(mtime))
                 shutil.move(old_pulsefilename,newpulsefilename)
-              
-            self.tab_widget.ratewidget.data_file_write = False
-            self.tab_widget.ratewidget.data_file.close()
+
+            try:
+                self.tab_widget.ratewidget.data_file_write = False
+                self.tab_widget.ratewidget.data_file.close()
+            except (AttributeError, IOError):
+                pass
+            
             mtime = now - self.tab_widget.ratewidget.measurement_start
             #print 'HOURS ', now, '|', mtime, '|', mtime.days, '|', str(mtime)                
             mtime = round(mtime.seconds/(3600.),2) + mtime.days*24

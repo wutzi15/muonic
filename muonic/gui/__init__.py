@@ -1,6 +1,9 @@
 """
 The gui of the programm, written with PyQt4
 """
-from MainWindow import MainWindow
+from application import Application
+import dialogs
+import widgets
+import plot_canvases
 
-__all__ = ["MainWindow"]
+__all__ = ["Application", "dialogs", "widgets", "plot_canvases"]

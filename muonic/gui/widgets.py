@@ -20,15 +20,15 @@ from PyQt4 import QtCore
 
 from muonic import DATA_PATH
 from muonic.daq.provider import BaseDAQProvider
-from muonic.gui.LineEdit import LineEdit
-from muonic.gui.MuonicPlotCanvases import ScalarsCanvas, LifetimeCanvas
-from muonic.gui.MuonicPlotCanvases import PulseCanvas, PulseWidthCanvas
-from muonic.gui.MuonicPlotCanvases import VelocityCanvas
-from muonic.gui.MuonicDialogs import DecayConfigDialog, PeriodicCallDialog
-from muonic.gui.MuonicDialogs import VelocityConfigDialog, FitRangeConfigDialog
+from muonic.gui.line_edit import LineEdit
+from muonic.gui.plot_canvases import ScalarsCanvas, LifetimeCanvas
+from muonic.gui.plot_canvases import PulseCanvas, PulseWidthCanvas
+from muonic.gui.plot_canvases import VelocityCanvas
+from muonic.gui.dialogs import DecayConfigDialog, PeriodicCallDialog
+from muonic.gui.dialogs import VelocityConfigDialog, FitRangeConfigDialog
 from muonic.analysis.fit import main as fit
 from muonic.analysis.fit import gaussian_fit
-from muonic.analysis.PulseAnalyzer import VelocityTrigger, DecayTriggerThorough
+from muonic.analysis.analyzer import VelocityTrigger, DecayTriggerThorough
 
 
 tr = QtCore.QCoreApplication.translate

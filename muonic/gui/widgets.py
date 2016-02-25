@@ -594,6 +594,8 @@ class PulseAnalyzerWidget(BaseWidget):
         layout.addWidget(self.pulse_width_canvas, 1, 1)
         layout.addWidget(pulse_width_toolbar, 2, 1)
 
+        self.setLayout(layout)
+
     def calculate(self):
         """
         Calculates the pulse widths.
@@ -641,7 +643,7 @@ class PulseAnalyzerWidget(BaseWidget):
 
         :returns: None
         """
-        if self.checkbox.isChecked() and not self.active():
+        if self.checkbox.isChecked():
             self.start()
         else:
             self.stop()

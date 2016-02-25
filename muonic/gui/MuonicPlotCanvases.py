@@ -73,7 +73,7 @@ class MuonicPlotCanvas(FigureCanvas):
         return colors[color] + string + colors["none"]   
 
 
-    def update_plot(self):
+    def update_plot(self, *args):
         """
         Instructions to updated this plot
         implement this individually
@@ -143,7 +143,7 @@ class ScalarsCanvas(MuonicPlotCanvas):
     def __init__(self,parent,logger, MAXLENGTH = 40):
         
         MuonicPlotCanvas.__init__(self,parent,logger,ymin=0, ymax=20,xlabel="Time (s)",ylabel="Rate (1/s)")
-        self.do_not_show_trigger = False
+        self.show_trigger = True
         #max length of shown = MAXLENGTH*timewindow
         self.MAXLENGTH = MAXLENGTH
         self.reset()
@@ -172,7 +172,7 @@ class ScalarsCanvas(MuonicPlotCanvas):
         self.l_chan1, = self.ax.plot(self.l_time,self.chan1, c='m', label='ch1',lw=3)
         self.l_chan2, = self.ax.plot(self.l_time,self.chan2, c='c',  label='ch2',lw=3)
         self.l_chan3, = self.ax.plot(self.l_time,self.chan3, c='b', label='ch3',lw=3)
-        if not self.do_not_show_trigger:
+        if self.show_trigger:
             self.l_trigger, = self.ax.plot(self.l_time,self.trigger, c='g', label='trigger',lw=3)
 
         self.N0 = 0
@@ -198,11 +198,15 @@ class ScalarsCanvas(MuonicPlotCanvas):
 
         self.fig.canvas.draw()
 
-    def update_plot(self, result, trigger = False,channelcheckbox_0 = True,channelcheckbox_1 = True,channelcheckbox_2 = True,channelcheckbox_3 = True):
+    def update_plot(self, result, show_trigger=True,
+                    channelcheckbox_0=True,
+                    channelcheckbox_1=True,
+                    channelcheckbox_2=True,
+                    channelcheckbox_3=True):
 
         #do a complete redraw of the plot to avoid memory leak!
         self.ax.clear()
-        self.do_not_show_trigger = trigger
+        self.show_trigger = show_trigger
         # set specific limits for X and Y axes
         #self.ax.set_xlim(0., 5.2)
         #self.ax.set_ylim(0., 100.2)
@@ -235,7 +239,7 @@ class ScalarsCanvas(MuonicPlotCanvas):
             self.l_chan2, = self.ax.plot(self.l_time,self.chan2, c='c', label='ch2',lw=2,marker='v')
         if channelcheckbox_3:
             self.l_chan3, = self.ax.plot(self.l_time,self.chan3, c='b', label='ch3',lw=2,marker='v')
-        if not self.do_not_show_trigger:
+        if self.show_trigger:
             self.l_trigger, = self.ax.plot(self.l_time,self.trigger, c='g', label='trg',lw=2,marker='x')
 
         try:
@@ -244,7 +248,7 @@ class ScalarsCanvas(MuonicPlotCanvas):
                 if ch_chk_bx:
                     _ncol_cnt += 1
 
-            if not self.do_not_show_trigger:
+            if self.show_trigger:
                 _ncol_cnt += 1
             
             self.ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=_ncol_cnt, mode="expand", borderaxespad=0., handlelength=2)

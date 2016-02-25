@@ -2,7 +2,6 @@
 Provide the dialog fields for user interaction
 """
 
-import abc
 from os import path
 
 from PyQt4 import QtCore, QtGui
@@ -15,8 +14,6 @@ class BaseDialog(QtGui.QDialog):
     :param window_title: the title of the window
     :type window_title: str
     """
-    __metaclass__ = abc.ABCMeta
-
     DEFAULT_ITEM_LABELS = ["Chan0", "Chan1", "Chan2", "Chan3"]
     
     def __init__(self, window_title):

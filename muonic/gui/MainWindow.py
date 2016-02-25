@@ -367,9 +367,9 @@ class MainWindow(QtGui.QMainWindow):
             chan3_active = config_window.get_widget_value("channel_checkbox_3")
             singles = config_window.get_widget_value("coincidence_checkbox_0")
             # if singles:
-            #    self.tabwidget.ratewidget.do_not_show_trigger = True
+            #    self.tabwidget.ratewidget.hide_trigger = True
             # else:
-            self.tab_widget.ratewidget.do_not_show_trigger = False
+            self.tab_widget.ratewidget.hide_trigger = False
             
             twofold = config_window.get_widget_value("coincidence_checkbox_1")
             threefold = config_window.get_widget_value("coincidence_checkbox_2")
@@ -702,7 +702,7 @@ class MainWindow(QtGui.QMainWindow):
             
             gps_widget = get_widget("gps")
 
-            if (gps_widget.active and
+            if (gps_widget.active() and
                     gps_widget.isEnabled()):
                 if len(gps_widget.gps_dump) <= gps_widget.read_lines:
                     gps_widget.gps_dump.append(msg)
@@ -712,12 +712,12 @@ class MainWindow(QtGui.QMainWindow):
                 
             status_widget = get_widget("status")
 
-            if status_widget.isVisible() and status_widget.active:
+            if status_widget.isVisible() and status_widget.active():
                 status_widget.update()
 
             decay_widget = get_widget("decay")
 
-            if msg.startswith('DC') and len(msg) > 2 and decay_widget.active:
+            if msg.startswith('DC') and len(msg) > 2 and decay_widget.active():
                 try:
                     split_msg = msg.split(" ")
                     decay_widget.previous_coinc_time_03 = split_msg[4].split("=")[1]
@@ -745,8 +745,8 @@ class MainWindow(QtGui.QMainWindow):
             pulse_widget = get_widget("pulse")
             velocity_widget = get_widget("velocity")
             
-            if (decay_widget.active or pulse_widget.active or 
-                    self.pulsefilename or velocity_widget.active):
+            if (decay_widget.active() or pulse_widget.active() or
+                    self.pulsefilename or velocity_widget.active()):
                 self.pulses = self.pulseextractor.extract(msg)
 
             self.widget_calculate()
@@ -758,7 +758,7 @@ class MainWindow(QtGui.QMainWindow):
         True if it should run only when the widget is active.
         """
         for widget in self.pulse_widgets:
-            if widget.active and (self.pulses is not None):
+            if widget.active() and (self.pulses is not None):
                 widget.calculate()
 
     def widget_update(self):
@@ -766,7 +766,7 @@ class MainWindow(QtGui.QMainWindow):
         Update the widgets
         """
         for widget in self.dynamic_widgets:
-            if widget.active:
+            if widget.active():
                 widget.update()
 
     def closeEvent(self, ev):
@@ -795,7 +795,7 @@ class MainWindow(QtGui.QMainWindow):
                 shutil.move(self.rawfilename,newrawfilename)
                 self.tab_widget.daqwidget.outputfile.close()
 
-            if self.tab_widget.decaywidget.active:
+            if self.tab_widget.decaywidget.active():
                 mtime = now - self.tab_widget.decaywidget.dec_mes_start
                 mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
                 self.logger.info("The muon decay measurement was active for %f hours" % mtime)
@@ -817,7 +817,7 @@ class MainWindow(QtGui.QMainWindow):
               
             self.tab_widget.ratewidget.data_file_write = False
             self.tab_widget.ratewidget.data_file.close()
-            mtime = now - self.tab_widget.ratewidget.rate_mes_start
+            mtime = now - self.tab_widget.ratewidget.measurement_start
             #print 'HOURS ', now, '|', mtime, '|', mtime.days, '|', str(mtime)                
             mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
             #print 'new mtime ', mtime, str(mtime)

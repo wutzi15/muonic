@@ -18,7 +18,7 @@ from muonic.daq import DAQIOError
 from muonic.gui.styles import LargeScreenMPStyle
 from muonic.gui.dialogs import ThresholdDialog, ConfigDialog
 from muonic.gui.dialogs import HelpDialog, AdvancedDialog
-from muonic.gui.widgets import VelocityWidget, PulseanalyzerWidget
+from muonic.gui.widgets import VelocityWidget, PulseAnalyzerWidget
 from muonic.gui.widgets import DecayWidget, DAQWidget, RateWidget
 from muonic.gui.widgets import GPSWidget, StatusWidget
 from muonic.util import add_widget, get_widget, update_setting, get_setting
@@ -176,7 +176,7 @@ class Application(QtGui.QMainWindow):
 
         add_widget("rate", self.tab_widget.widget(0))
 
-        self.tab_widget.addTab(PulseanalyzerWidget(logger, parent=self), "Pulse Analyzer")
+        self.tab_widget.addTab(PulseAnalyzerWidget(logger, parent=self), "Pulse Analyzer")
         self.tab_widget.pulseanalyzerwidget = self.tab_widget.widget(1)
 
         add_widget("pulse", self.tab_widget.widget(1))

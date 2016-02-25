@@ -79,6 +79,24 @@ class BaseWidget(QtGui.QWidget):
             self._active = value
         return self._active
 
+    def start(self):
+        """
+        Perform setup here like resetting variables when the
+        widget goes into active state
+
+        :return: None
+        """
+        pass
+
+    def stop(self):
+        """
+        Perform actions like saving data when the widget goes
+        into inactive state
+
+        :return:
+        """
+        pass
+
     def daq_put(self, msg):
         """
         Send message to DAQ cards. Reuses the connection of the parent widget
@@ -205,10 +223,10 @@ class RateWidget(BaseWidget):
         self.stop_button = QtGui.QPushButton('Stop run')
 
         QtCore.QObject.connect(self.start_button, QtCore.SIGNAL("clicked()"),
-                               self.on_start_clicked)
+                               self.start)
 
         QtCore.QObject.connect(self.stop_button, QtCore.SIGNAL("clicked()"),
-                               self.on_stop_clicked)
+                               self.stop)
         self.stop_button.setEnabled(False)
 
         self.setup_layout()
@@ -451,13 +469,18 @@ class RateWidget(BaseWidget):
         else:
             self.info_fields[key].setDisabled(not enable)
 
-    def on_start_clicked(self):
+    def start(self):
         """
-        Start the rate measurement
+        Starts the rate measurement and opens the data file.
 
         :returns: None
         """
+        if self.active():
+            return
+
         self.logger.debug("Start Button Clicked")
+
+        self.active(True)
 
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
@@ -507,14 +530,15 @@ class RateWidget(BaseWidget):
         # reset plot
         self.scalars_monitor.reset(show_pending=True)
 
-        self.active(True)
-        
-    def on_stop_clicked(self):
+    def stop(self):
         """
-        Stop the measurement and close data file.
+        Stops the rate measurement and closes the data file.
 
         :returns: None
         """
+        if not self.active():
+            return
+
         self.active(False)
 
         self.start_button.setEnabled(True)
@@ -532,94 +556,146 @@ class RateWidget(BaseWidget):
             self.data_file.close()
 
 
-class PulseanalyzerWidget(BaseWidget):
+class PulseAnalyzerWidget(BaseWidget):
     """
-    Provide a widget which is able to show a plot of triggered pulses
+    Provides a widget which is able to show a plot of triggered pulses.
+
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param parent: parent widget
     """
     def __init__(self, logger, parent=None):
         BaseWidget.__init__(self, logger, parent)
 
-        self.mainwindow = self.parentWidget()
-        self.pulsefile = self.mainwindow.pulseextractor.pulsefile
-        self.activatePulseanalyzer = QtGui.QCheckBox(self)
-        self.activatePulseanalyzer.setText(tr("Dialog", "Show Oscilloscope and Pulse Width Distribution", None, QtGui.QApplication.UnicodeUTF8))
-        self.activatePulseanalyzer.setToolTip(QtCore.QString("The oscilloscope will show the last triggered pulses in the selected time window"))
-        self.activatePulseanalyzer.setObjectName("activate_pulseanalyzer")
-        grid = QtGui.QGridLayout(self)
-        self.pulsecanvas = PulseCanvas(self,logger)
-        self.pulsecanvas.setObjectName("pulse_canvas")
-        self.pulsewidthcanvas = PulseWidthCanvas(self,logger)
-        self.pulsewidthcanvas.setObjectName("pulse_width_canvas")
-        ntb = NavigationToolbar(self.pulsecanvas, self)
-        ntb2 = NavigationToolbar(self.pulsewidthcanvas, self)
-        QtCore.QObject.connect(self.activatePulseanalyzer,
-                               QtCore.SIGNAL("clicked()"),
-                               self.activatePulseanalyzerClicked
-                               )
+        self.pulses = None
+        self.pulse_widths = []
+        self.pulse_file = self.parent.pulseextractor.pulsefile
 
-        grid.addWidget(self.activatePulseanalyzer,0,0,1,2)
-        grid.addWidget(self.pulsecanvas,1,0)
-        grid.addWidget(ntb,2,0) 
-        grid.addWidget(self.pulsewidthcanvas,1,1)
-        grid.addWidget(ntb2,2,1)
-        self.pulses      = None
-        self.pulsewidths = []
+        # setup layout
+        layout = QtGui.QGridLayout(self)
+
+        self.checkbox = QtGui.QCheckBox(self)
+        self.checkbox.setText("Show Oscilloscope and Pulse Width Distribution")
+        self.checkbox.setToolTip("The oscilloscope will show the " +
+                                 "last triggered pulses in the " +
+                                 "selected time window")
+        QtCore.QObject.connect(self.checkbox, QtCore.SIGNAL("clicked()"),
+                               self.on_checkbox_clicked)
+
+        self.pulse_canvas = PulseCanvas(self, logger)
+        self.pulse_width_canvas = PulseWidthCanvas(self, logger)
+
+        pulse_toolbar = NavigationToolbar(self.pulse_canvas, self)
+        pulse_width_toolbar = NavigationToolbar(self.pulse_width_canvas, self)
+
+        layout.addWidget(self.checkbox, 0, 0, 1, 2)
+        layout.addWidget(self.pulse_canvas, 1, 0)
+        layout.addWidget(pulse_toolbar, 2, 0)
+        layout.addWidget(self.pulse_width_canvas, 1, 1)
+        layout.addWidget(pulse_width_toolbar, 2, 1)
 
     def calculate(self):
-        self.pulses = self.mainwindow.pulses
+        """
+        Calculates the pulse widths.
+
+        :returns: None
+        """
+        if not self.active():
+            return
+
+        self.pulses = self.parent.pulses
+
         if self.pulses is None:
             self.logger.debug("Not received any pulses")
             return None
-        # pulsewidths changed because falling edge can be None.
-        # pulsewidths = [fe - le for chan in pulses[1:] for le,fe in chan]
-        pulsewidths = []
-        for chan in self.pulses[1:]:
-            for le, fe in chan:
+
+        # pulse_widths changed because falling edge can be None.
+        # pulse_widths = [fe - le for chan in pulses[1:] for le,fe in chan]
+
+        pulse_widths = []
+
+        for channel in self.pulses[1:]:
+            for le, fe in channel:
                 if fe is not None:
-                    pulsewidths.append(fe - le)
+                    pulse_widths.append(fe - le)
                 else:
-                    pulsewidths.append(0.)
-        self.pulsewidths += pulsewidths
+                    pulse_widths.append(0.)
+        self.pulse_widths += pulse_widths
         
     def update(self):
-        self.pulsecanvas.update_plot(self.pulses)
-        self.pulsewidthcanvas.update_plot(self.pulsewidths)
-        self.pulsewidths = []
-
-    def activatePulseanalyzerClicked(self):
         """
-        Perform extra actions when the checkbox is clicked
+        Update plot canvases
+
+        :return: None
         """
         if not self.active():
-            self.pulsefile = self.mainwindow.pulseextractor.pulsefile
-            self.activatePulseanalyzer.setChecked(True)
-            self.active(True)
-            self.logger.debug("Switching on Pulseanalyzer.")
-            self.mainwindow.daq.put("CE")
+            return
 
-            self.mainwindow.daq.put('CE')
-            if not self.pulsefile:
-                self.mainwindow.pulsefilename = \
-                        os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
-                                                                   "P",
-                                                                   self.mainwindow.opts.user[0],
-                                                                   self.mainwindow.opts.user[1]) )
-                self.mainwindow.pulse_mes_start = self.mainwindow.now
-                self.mainwindow.pulseextractor.pulsefile = open(self.mainwindow.pulsefilename,'w')
-                self.logger.debug("Starting to write pulses to %s" %self.mainwindow.pulsefilename)
-                self.mainwindow.writepulses = True
+        self.pulse_canvas.update_plot(self.pulses)
+        self.pulse_width_canvas.update_plot(self.pulse_widths)
+        self.pulse_widths = []
 
+    def on_checkbox_clicked(self):
+        """
+        Starts or stops the pulse analyzer depending on checkbox state
+
+        :returns: None
+        """
+        if self.checkbox.isChecked() and not self.active():
+            self.start()
         else:
-            self.logger.debug("Switching off Pulseanalyzer.")
-            self.activatePulseanalyzer.setChecked(False)            
-            self.active(False)
+            self.stop()
 
-            if not self.pulsefile:
-                self.mainwindow.pulsefilename = ''
-                self.mainwindow.pulse_mes_start = False
-                if self.mainwindow.pulseextractor.pulsefile:
-                    self.mainwindow.pulseextractor.pulsefile.close()
-                self.mainwindow.pulseextractor.pulsefile = False
+    def start(self):
+        """
+        Starts the pulse analyzer
+
+        :return: None
+        """
+        if self.active():
+            return
+
+        self.logger.debug("switching on pulse analyzer.")
+        self.pulse_file = self.parent.pulseextractor.pulsefile
+        self.active(True)
+
+        self.daq_put("CE")
+        self.daq_put('CE')
+
+        # FIXME: do not do this here
+        if not self.pulse_file:
+            self.parent.pulsefilename = os.path.join(
+                    DATA_PATH, "%s_%s_HOURS_%s" % (
+                        self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
+                        self.parent.opts.user))
+            self.parent.pulse_mes_start = self.parent.now
+            self.parent.pulseextractor.pulsefile = open(
+                    self.parent.pulsefilename, 'w')
+            self.logger.debug("Starting to write pulses to %s" %
+                              self.parent.pulsefilename)
+            self.parent.writepulses = True
+
+    def stop(self):
+        """
+        Stops the pulse analyzer
+
+        :return: None
+        """
+        if not self.active():
+            return
+
+        self.logger.debug("switching off pulse analyzer.")
+        self.active(False)
+
+        # FIXME: do not do this here
+        if not self.pulse_file:
+            self.parent.pulsefilename = ''
+            self.parent.pulse_mes_start = False
+
+            if self.parent.pulseextractor.pulsefile:
+                self.parent.pulseextractor.pulsefile.close()
+            self.parent.pulseextractor.pulsefile = False
+
 
 class StatusWidget(BaseWidget): # not used yet
     """

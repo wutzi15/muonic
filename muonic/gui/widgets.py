@@ -569,7 +569,7 @@ class PulseAnalyzerWidget(BaseWidget):
 
         self.pulses = None
         self.pulse_widths = []
-        self.pulse_file = self.parent.pulseextractor.pulsefile
+        self.pulse_file = self.parent.pulseextractor.pulse_file
 
         # setup layout
         layout = QtGui.QGridLayout(self)
@@ -628,7 +628,7 @@ class PulseAnalyzerWidget(BaseWidget):
         """
         Update plot canvases
 
-        :return: None
+        :returns: None
         """
         if not self.active():
             return
@@ -652,13 +652,13 @@ class PulseAnalyzerWidget(BaseWidget):
         """
         Starts the pulse analyzer
 
-        :return: None
+        :returns: None
         """
         if self.active():
             return
 
         self.logger.debug("switching on pulse analyzer.")
-        self.pulse_file = self.parent.pulseextractor.pulsefile
+        self.pulse_file = self.parent.pulseextractor.pulse_file
         self.active(True)
 
         self.daq_put("CE")
@@ -672,7 +672,7 @@ class PulseAnalyzerWidget(BaseWidget):
                         self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
                         self.parent.opts.user))
             self.parent.pulse_mes_start = self.parent.now
-            self.parent.pulseextractor.pulsefile = open(
+            self.parent.pulseextractor.pulse_file = open(
                     self.parent.pulsefilename, 'w')
             self.logger.debug("Starting to write pulses to %s" %
                               self.parent.pulsefilename)
@@ -682,7 +682,7 @@ class PulseAnalyzerWidget(BaseWidget):
         """
         Stops the pulse analyzer
 
-        :return: None
+        :returns: None
         """
         if not self.active():
             return
@@ -696,9 +696,9 @@ class PulseAnalyzerWidget(BaseWidget):
             self.parent.pulsefilename = ''
             self.parent.pulse_mes_start = False
 
-            if self.parent.pulseextractor.pulsefile:
-                self.parent.pulseextractor.pulsefile.close()
-            self.parent.pulseextractor.pulsefile = False
+            if self.parent.pulseextractor.pulse_file:
+                self.parent.pulseextractor.pulse_file.close()
+            self.parent.pulseextractor.pulse_file = False
 
 
 class StatusWidget(BaseWidget): # not used yet
@@ -981,9 +981,9 @@ class StatusWidget(BaseWidget): # not used yet
         #if not self.pulsefile:
         #    self.mainwindow.pulsefilename = ''
         #    self.mainwindow.pulse_mes_start = False
-        #    if self.mainwindow.pulseextractor.pulsefile:
-        #        self.mainwindow.pulseextractor.pulsefile.close()
-        #    self.mainwindow.pulseextractor.pulsefile = False
+        #    if self.mainwindow.pulseextractor.pulse_file:
+        #        self.mainwindow.pulseextractor.pulse_file.close()
+        #    self.mainwindow.pulseextractor.pulse_file = False
 
 
 
@@ -1042,13 +1042,13 @@ class VelocityWidget(BaseWidget):
                               QtCore.SIGNAL("clicked()"),
                               self.velocityFitRangeClicked
                               )
-        self.pulsefile = self.mainwindow.pulseextractor.pulsefile
+        self.pulsefile = self.mainwindow.pulseextractor.pulse_file
         
     def calculate(self):
         pulses = self.mainwindow.pulses
         if pulses is None:
             return
-        flighttime = self.trigger.trigger(pulses,upperchannel=self.upper_channel,lowerchannel=self.lower_channel)
+        flighttime = self.trigger.trigger(pulses,upper_channel=self.upper_channel,lower_channel=self.lower_channel)
         if flighttime != None and flighttime > 0:
             #velocity = (self.channel_distance/((10**(-9))*flighttime))/C #flighttime is in ns, return in fractions of C
             self.logger.info("measured flighttime %s" %flighttime.__repr__())
@@ -1120,7 +1120,7 @@ class VelocityWidget(BaseWidget):
                                                                        self.mainwindow.opts.user[0],
                                                                        self.mainwindow.opts.user[1]) )
                     self.mainwindow.pulse_mes_start = self.mainwindow.now
-                    self.mainwindow.pulseextractor.pulsefile = open(self.mainwindow.pulsefilename,'w')
+                    self.mainwindow.pulseextractor.pulse_file = open(self.mainwindow.pulsefilename,'w')
                     self.logger.debug("Starting to write pulses to %s" %self.mainwindow.pulsefilename)
                     self.mainwindow.writepulses = True
 
@@ -1136,9 +1136,9 @@ class VelocityWidget(BaseWidget):
             if not self.pulsefile:
                 self.mainwindow.pulsefilename = ''
                 self.mainwindow.pulse_mes_start = False
-                if self.mainwindow.pulseextractor.pulsefile:
-                    self.mainwindow.pulseextractor.pulsefile.close()
-                self.mainwindow.pulseextractor.pulsefile = False
+                if self.mainwindow.pulseextractor.pulse_file:
+                    self.mainwindow.pulseextractor.pulse_file.close()
+                self.mainwindow.pulseextractor.pulse_file = False
 
             self.mainwindow.tab_widget.ratewidget.on_stop_clicked()
 
@@ -1160,7 +1160,7 @@ class DecayWidget(BaseWidget):
         self.maxdoublepulsewidth = 100000 #inf
         self.muondecaycounter    = 0
         self.lastdecaytime       = 'None'
-        self.pulsefile = self.parentWidget().pulseextractor.pulsefile
+        self.pulsefile = self.parentWidget().pulseextractor.pulse_file
             
         self.singlepulsechannel  = 0
         self.doublepulsechannel  = 1
@@ -1220,7 +1220,8 @@ class DecayWidget(BaseWidget):
     def calculate(self):
         pulses = self.mainwindow.pulses
         #single_channel = self.singlepulsechannel, double_channel = self.doublepulsechannel, veto_channel = self.vetopulsechannel,mindecaytime = self.decay_mintime,minsinglepulsewidth = minsinglepulsewidth,maxsinglepulsewidth = maxsinglepulsewidth, mindoublepulsewidth = mindoublepulsewidth, maxdoublepulsewidth = maxdoublepulsewidth):
-        decay =  self.trigger.trigger(pulses,single_channel = self.singlepulsechannel,double_channel = self.doublepulsechannel, veto_channel = self.vetopulsechannel, mindecaytime= self.decay_mintime,minsinglepulsewidth = self.minsinglepulsewidth,maxsinglepulsewidth = self.maxsinglepulsewidth, mindoublepulsewidth = self.mindoublepulsewidth, maxdoublepulsewidth = self.maxdoublepulsewidth )
+        decay =  self.trigger.trigger(pulses, single_channel = self.singlepulsechannel, double_channel = self.doublepulsechannel, veto_channel = self.vetopulsechannel, min_decay_time= self.decay_mintime,
+                                      min_single_pulse_width= self.minsinglepulsewidth, max_single_pulse_width= self.maxsinglepulsewidth, min_double_pulse_width= self.mindoublepulsewidth, max_double_pulse_width= self.maxdoublepulsewidth)
         if decay != None:
             when = time.asctime()
             self.decay.append((decay/1000,when))
@@ -1350,7 +1351,7 @@ class DecayWidget(BaseWidget):
                     self.active(True)
                     #FIXME: is this intentional?
                     self.parentWidget().parentWidget().ratewidget.on_start_clicked()
-                    self.pulsefile = self.mainwindow.pulseextractor.pulsefile
+                    self.pulsefile = self.mainwindow.pulseextractor.pulse_file
                     if not self.pulsefile:
                         self.mainwindow.pulsefilename = \
                             os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
@@ -1358,7 +1359,7 @@ class DecayWidget(BaseWidget):
                                                                        self.mainwindow.opts.user[0],
                                                                        self.mainwindow.opts.user[1]) )
                         self.mainwindow.pulse_mes_start = self.mainwindow.now
-                        self.mainwindow.pulseextractor.pulsefile = open(self.mainwindow.pulsefilename,'w')
+                        self.mainwindow.pulseextractor.pulse_file = open(self.mainwindow.pulsefilename,'w')
                         self.logger.debug("Starting to write pulses to %s" %self.mainwindow.pulsefilename)
                         self.mainwindow.writepulses = True
 

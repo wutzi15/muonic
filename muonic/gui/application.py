@@ -158,7 +158,7 @@ class Application(QtGui.QMainWindow):
                 self.logger.debug("Queue empty!")
                 
         # the pulseextractor for direct analysis
-        self.pulseextractor = PulseExtractor(pulsefile=self.pulsefilename)
+        self.pulseextractor = PulseExtractor(pulse_file=self.pulsefilename)
         self.pulses = None
 
         # A timer to periodically call processIncoming and check what is

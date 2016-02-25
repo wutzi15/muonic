@@ -664,7 +664,8 @@ class PulseAnalyzerWidget(BaseWidget):
         self.daq_put("CE")
         self.daq_put('CE')
 
-        # FIXME: do not do this here
+        # FIXME: do not do this here, just add a trigger method to pulse
+        # FIXME: extractor to enable or disable writing to file
         if not self.pulse_file:
             self.parent.pulsefilename = os.path.join(
                     DATA_PATH, "%s_%s_HOURS_%s" % (
@@ -689,7 +690,8 @@ class PulseAnalyzerWidget(BaseWidget):
         self.logger.debug("switching off pulse analyzer.")
         self.active(False)
 
-        # FIXME: do not do this here
+        # FIXME: do not do this here, just add a trigger method to pulse
+        # FIXME: extractor to enable or disable writing to file
         if not self.pulse_file:
             self.parent.pulsefilename = ''
             self.parent.pulse_mes_start = False

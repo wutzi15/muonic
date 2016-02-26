@@ -423,8 +423,8 @@ class RateWidget(BaseWidget):
 
         self.scalars_monitor.update_plot(
                 self.rates, self.show_trigger,
-                self.parent.channelcheckbox_0, self.parent.channelcheckbox_1,
-                self.parent.channelcheckbox_2, self.parent.channelcheckbox_3)
+                [self.parent.channelcheckbox_0, self.parent.channelcheckbox_1,
+                 self.parent.channelcheckbox_2, self.parent.channelcheckbox_3])
 
     def update_fields(self, channel, enabled, disable_only=False):
         """
@@ -444,7 +444,8 @@ class RateWidget(BaseWidget):
         if enabled:
             if not disable_only:
                 self.rate_fields[channel].setText(
-                        "%.2f" % (self.scalar_buffer[0] / self.time_window))
+                        "%.2f" % (self.scalar_buffer[channel] /
+                                  self.time_window))
                 self.scalar_fields[channel].setText(
                         "%d" % (self.scalar_buffer[channel]))
         else:
@@ -1108,11 +1109,11 @@ class VelocityWidget(BaseWidget):
                         self.lower_channel = chan + 1 #
             
                 self.logger.info("Switching off decay measurement if running!")
-                if self.parentWidget().parentWidget().decaywidget.active:
+                if self.parentWidget().parentWidget().decaywidget.active():
                     self.parentWidget().parentWidget().decaywidget.activateMuondecayClicked()
                 self.active(True)
                 self.parentWidget().parentWidget().parentWidget().daq.put("CE")
-                self.parentWidget().parentWidget().ratewidget.on_start_clicked()
+                self.parentWidget().parentWidget().ratewidget.start()
                 if not self.pulsefile:
                     self.mainwindow.pulsefilename = \
                             os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
@@ -1322,7 +1323,7 @@ class DecayWidget(BaseWidget):
                         if channel[1]:
                             self.vetopulsechannel = channel[0] + 1 # there is a mapping later from this to an index with an offset
                     self.logger.info("Switching off velocity measurement if running!")
-                    if self.parentWidget().parentWidget().velocitywidget.active:
+                    if self.parentWidget().parentWidget().velocitywidget.active():
                         self.parentWidget().parentWidget().velocitywidget.activateVelocityClicked()
 
                     self.logger.warn("We now activate the Muondecay mode!\n All other Coincidence/Veto settings will be overriden!")
@@ -1350,7 +1351,7 @@ class DecayWidget(BaseWidget):
                     #self.decaywidget.findChild("activate_mudecay").setChecked(True)
                     self.active(True)
                     #FIXME: is this intentional?
-                    self.parentWidget().parentWidget().ratewidget.on_start_clicked()
+                    self.parentWidget().parentWidget().ratewidget.start()
                     self.pulsefile = self.mainwindow.pulseextractor.pulse_file
                     if not self.pulsefile:
                         self.mainwindow.pulsefilename = \
@@ -1385,7 +1386,7 @@ class DecayWidget(BaseWidget):
             self.active(False)
             self.activateMuondecay.setChecked(False)
             self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "" ,None, QtGui.QApplication.UnicodeUTF8))
-            self.parentWidget().parentWidget().ratewidget.on_stop_clicked()
+            self.parentWidget().parentWidget().ratewidget.stop()
 
 
 class DAQWidget(BaseWidget):

@@ -786,8 +786,8 @@ class Application(QtGui.QMainWindow):
             now = datetime.datetime.now()
 
             # close the RAW file (if any)
-            if self.tab_widget.daqwidget.write_file:
-                self.tab_widget.daqwidget.write_file = False
+            if self.tab_widget.daqwidget.write_raw_file:
+                self.tab_widget.daqwidget.write_raw_file = False
                 mtime = now - self.raw_mes_start
                 mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
                 self.logger.info("The raw data was written for %f hours" % mtime)

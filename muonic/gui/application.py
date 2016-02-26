@@ -698,7 +698,7 @@ class Application(QtGui.QMainWindow):
             self.daq_msg = msg #make it public for daughters
             # Check contents of message and do what it says         
             daq_widget = get_widget("daq")
-            daq_widget.calculate()
+            daq_widget.update()
             
             gps_widget = get_widget("gps")
 
@@ -793,7 +793,7 @@ class Application(QtGui.QMainWindow):
                 self.logger.info("The raw data was written for %f hours" % mtime)
                 newrawfilename = self.rawfilename.replace("HOURS",str(mtime))
                 shutil.move(self.rawfilename,newrawfilename)
-                self.tab_widget.daqwidget.outputfile.close()
+                self.tab_widget.daqwidget.output_file.close()
 
             if self.tab_widget.decaywidget.active():
                 mtime = now - self.tab_widget.decaywidget.dec_mes_start

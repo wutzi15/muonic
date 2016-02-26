@@ -1140,7 +1140,7 @@ class VelocityWidget(BaseWidget):
                     self.mainwindow.pulseextractor.pulse_file.close()
                 self.mainwindow.pulseextractor.pulse_file = False
 
-            self.mainwindow.tab_widget.ratewidget.on_stop_clicked()
+            self.mainwindow.tab_widget.ratewidget.stop()
 
 
 class DecayWidget(BaseWidget):
@@ -1389,128 +1389,200 @@ class DecayWidget(BaseWidget):
 
 
 class DAQWidget(BaseWidget):
+    """
+    Shows the DAQ message log. The message log can be written to a file.
+    This widget has a command line to issue DAQ commands, as well as
+    periodic commands within a user defined interval.
+
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param parent: parent widget
+    """
 
     def __init__(self, logger, parent=None):
         BaseWidget.__init__(self, logger, parent)
-        self.mainwindow = self.parentWidget()
-        self.write_file      = False
-        self.label           = QtGui.QLabel(tr('MainWindow','Command'))
-        self.hello_edit      = LineEdit()
-        self.hello_button    = QtGui.QPushButton(tr('MainWindow','Send'))
-        self.file_button     = QtGui.QPushButton(tr('MainWindow', 'Save RAW-File'))
-        self.periodic_button = QtGui.QPushButton(tr('MainWindow', 'Periodic Call'))
-        QtCore.QObject.connect(self.hello_button,
-                              QtCore.SIGNAL("clicked()"),
-                              self.on_hello_clicked
-                              )
+
+        # raw output file
+        self.output_file = None
+        self.write_raw_file = False
+        self.write_status = None
+
+        # periodic call
+        self.interval = 1
+        self.command = None
+        self.periodic_commands = []
+        self.periodic_status = None
+        self.periodic_call_timer = QtCore.QTimer()
+
+        # daq msg log
+        self.daq_msg_log = QtGui.QPlainTextEdit()
+        self.daq_msg_log.setReadOnly(True)
+        # 500 lines history
+        self.daq_msg_log.document().setMaximumBlockCount(500)
+
+        # input field and buttons
+        self.label = QtGui.QLabel("Command")
+        self.hello_edit = LineEdit()
+        self.file_button = QtGui.QPushButton("Save RAW-File")
+        self.periodic_button = QtGui.QPushButton("Periodic Call")
+
+        # connect signals
+        QtCore.QObject.connect(self.periodic_call_timer,
+                               QtCore.SIGNAL("timeout()"),
+                               self._execute_commands)
         QtCore.QObject.connect(self.hello_edit,
-                              QtCore.SIGNAL("returnPressed()"),
-                              self.on_hello_clicked
-                              )
-        
+                               QtCore.SIGNAL("returnPressed()"),
+                               self.on_hello_clicked)
         QtCore.QObject.connect(self.file_button,
-                                QtCore.SIGNAL("clicked()"),
-                                self.on_file_clicked
-                                )
+                               QtCore.SIGNAL("clicked()"),
+                               self.on_file_clicked)
         QtCore.QObject.connect(self.periodic_button,
-                                QtCore.SIGNAL("clicked()"),
-                                self.on_periodic_clicked
-                                )
-        
-        self.text_box = QtGui.QPlainTextEdit()
-        self.text_box.setReadOnly(True)
-        # only 500 lines history
-        self.text_box.document().setMaximumBlockCount(500)
-        
-        daq_layout = QtGui.QGridLayout(self)
-        daq_layout.addWidget(self.text_box,0,0,1, 4)
-        daq_layout.addWidget(self.label,1,0)
-        daq_layout.addWidget(self.hello_edit,1,1)
-        daq_layout.addWidget(self.hello_button,1,2) 
-        daq_layout.addWidget(self.file_button,1,2) 
-        daq_layout.addWidget(self.periodic_button,1,3)   
+                               QtCore.SIGNAL("clicked()"),
+                               self.on_periodic_clicked)
+
+        # add widgets to layout
+        layout = QtGui.QGridLayout(self)
+        layout.addWidget(self.daq_msg_log, 0, 0, 1, 4)
+        layout.addWidget(self.label, 1, 0)
+        layout.addWidget(self.hello_edit, 1, 1)
+        layout.addWidget(self.file_button, 1, 2)
+        layout.addWidget(self.periodic_button, 1, 3)
+
+        self.setLayout(layout)
 
     def on_hello_clicked(self):
-
         """
-        send a message to the daq
+        Send a message to the DAQ card
+
+        :returns: None
         """
         text = str(self.hello_edit.displayText())
         if len(text) > 0:
-            self.mainwindow.daq.put(str(self.hello_edit.displayText()))
+            self.daq_put(text)
             self.hello_edit.add_hist_item(text)
         self.hello_edit.clear()
 
     def on_file_clicked(self):
         """
-        save the raw daq data to a automatically named file
+        Save the raw DAQ data to a automatically named file
+
+        :returns: None
         """
-        self.mainwindow.daq.put("CE")        
-        self.outputfile = open(self.mainwindow.rawfilename,"w")
-        self.file_label = QtGui.QLabel(tr('MainWindow','Writing to %s'%self.mainwindow.rawfilename))
-        self.write_file = True
-        self.mainwindow.raw_mes_start = datetime.datetime.now()
-        self.mainwindow.statusbar.addPermanentWidget(self.file_label)
+        if self.write_raw_file:
+            self.write_raw_file = False
+            self.file_button.setText("Save RAW-File")
+            try:
+                self.output_file.close()
+            except IOError as e:
+                self.logger.error("unable to close file '%s': %s" %
+                                  (self.parent.rawfilename, str(e)))
+            self.parent.statusbar.removeWidget(self.write_status)
+        else:
+            try:
+                self.write_raw_file = True
+                self.file_button.setText("Stop saving RAW-File")
+                self.parent.daq.put("CE")
+
+                # FIXME: rawfilename and raw_mes_start belong to this widget
+                self.output_file = open(self.parent.rawfilename, "w")
+                self.parent.raw_mes_start = datetime.datetime.now()
+
+                self.write_status = QtGui.QLabel("Writing to %s" %
+                                                 self.parent.rawfilename)
+                self.parent.statusbar.addPermanentWidget(self.write_status)
+            except IOError as e:
+                self.logger.error("unable to open file '%s': %s" %
+                                  (self.parent.rawfilename, str(e)))
 
     def on_periodic_clicked(self):
         """
-        issue a command periodically
-        """
+        Issue a DAQ command periodically
 
-        periodic_window = PeriodicCallDialog()
-        rv = periodic_window.exec_()
-        if rv == 1:
-            period = periodic_window.get_widget_value("interval") * 1000 #We need the period in milliseconds
-            command = periodic_window.get_widget_value("command")
-            commands = command.split('+')
-            def periodic_put():
-                for c in commands:
-                    self.mainwindow.daq.put(c)
-            self.periodic_put = periodic_put
-            self.periodic_call_timer = QtCore.QTimer()
-            QtCore.QObject.connect(self.periodic_call_timer,
-                               QtCore.SIGNAL("timeout()"),
-                               self.periodic_put)
-            self.periodic_put()
-            self.periodic_call_timer.start(period)
-            self.periodic_status_label = QtGui.QLabel(tr('MainWindow','%s every %s sec'%(command,period/1000)))
-            self.mainwindow.statusbar.addPermanentWidget(self.periodic_status_label)
+        :returns: None
+        """
+        dialog = PeriodicCallDialog(self.command, self.interval)
+
+        if dialog.exec_() == 1:
+            self.interval = dialog.get_widget_value("interval")
+            self.command = str(dialog.get_widget_value("command")).strip()
+
+            # ignore empty commands
+            if self.command == "":
+                return
+
+            self.periodic_commands = self.command.split('+')
+
+            # stop timer and clear status if already running
+            if self.periodic_call_timer.isActive():
+                self.periodic_call_timer.stop()
+                self.parent.statusbar.removeWidget(self.periodic_status)
+
+            self.periodic_call_timer.start(self.interval * 1000)
+            self.periodic_status = QtGui.QLabel(
+                    '%s every %s sec' % (self.command, self.interval))
+            self.parent.statusbar.addPermanentWidget(
+                    self.periodic_status)
+
+            # execute commands now
+            self._execute_commands()
         else:
             try:
                 self.periodic_call_timer.stop()
-                self.mainwindow.statusbar.removeWidget(self.periodic_status_label)
+                self.parent.statusbar.removeWidget(self.periodic_status)
             except AttributeError:
                 pass
 
-    def calculate(self):
+    def _execute_commands(self):
         """
-        Function that is called via processincoming. It does:
-        - starts file writing stuff
-        """
-        self.text_box.appendPlainText(str(self.mainwindow.daq_msg))
-        if self.write_file:
-            #self.daq_file.write(self.mainwindow.daq_msg, status = self.mainwindow.statusline)
-            self.write_to_file(str(self.mainwindow.daq_msg))
+        Execute periodic commands
 
-    def write_to_file(self,msg):
+        :returns: None
+        """
+        for command in self.periodic_commands:
+            self.daq_put(command)
+
+    def update(self):
+        """
+        Update daq msg log
+
+        :returns: None
+        """
+        msg = self.daq_get_last()
+        self.daq_msg_log.appendPlainText(msg)
+
+        if self.write_raw_file:
+            self._write_to_file(msg)
+
+    def _write_to_file(self, msg):
         """
         Write the "RAW" file
-        :param msg:
-        :return:
+
+        :param msg: daq message
+        :type msg: str
+        :returns: None
         """
 
-        try:
-            if self.mainwindow.nostatus:
-                fields = msg.rstrip("\n").split(" ")
-                if ((len(fields) == 16) and (len(fields[0]) == 8)):
-                    self.outputfile.write(str(msg)+'\n')
-                else:
-                    self.logger.debug("Not writing line '%s' to file because it does not contain trigger data" %msg)
+        # FIXME: 'nostatus' is a setting: uses 'get_setting()' for this
+        if self.parent.nostatus:
+            fields = msg.rstrip("\n").split(" ")
+            if (len(fields) == 16) and (len(fields[0]) == 8):
+                self.output_file.write(str(msg) + "\n")
             else:
-                self.outputfile.write(str(msg)+'\n')
+                self.logger.debug(("Not writing line '%s' to file " +
+                                  "because it does not contain " +
+                                  "trigger data") % msg)
+        else:
+            self.output_file.write(str(msg) + "\n")
 
-        except ValueError:
-            self.logger.warning('Trying to write on closed file, captured!')
+    def finish(self):
+        """
+        Cleanup
+
+        :returns: None
+        """
+        if self.write_raw_file:
+            self.output_file.close()
+            # TODO: handle renaming of output file here
 
 
 class GPSWidget(BaseWidget):

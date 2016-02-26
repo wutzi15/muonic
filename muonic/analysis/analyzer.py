@@ -35,7 +35,7 @@ class PulseExtractor:
     If a pulse file is given, all the extracted pulses will be
     written into it.
 
-    :param pulsefile: filename of the pulse file
+    :param pulse_file: filename of the pulse file
     :type pulse_file: str
     """
 
@@ -58,10 +58,8 @@ class PulseExtractor:
         # to correct trigger counter rollover
         self.last_trigger_count = 0
 
-        # TODO find a generic way to account
-        # for the fact that the default
-        # cna be either 25 or 41 MHz
-        # variables for DAQ frequency calculation
+        # TODO find a generic way to account for the fact that the default
+        # cna be either 25 or 41 MHz variables for DAQ frequency calculation
         self.last_frequency_poll_time = 0
         self.last_frequency_poll_triggers = 0
         self.calculated_frequency = DEFAULT_FREQUENCY

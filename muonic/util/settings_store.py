@@ -1,5 +1,5 @@
 """
-Global application settings
+Global application settings store
 """
 
 __all__ = ["update_setting", "have_setting", "get_setting",
@@ -32,16 +32,21 @@ def update_setting(key, value):
     """
     Update value for settings key.
 
+    Raises KeyError if key is None.
+
     :param key: settings key
     :type key: str
     :param value: setting value
     :type value: object
+    :raises: KeyError
     :returns: None
     """
     global _settings
 
-    if key is not None:
-        _settings[key] = value
+    if key is None:
+        raise KeyError("key must not be of 'None-Type'")
+
+    _settings[key] = value
 
 
 def have_setting(key):
@@ -55,15 +60,17 @@ def have_setting(key):
     return key in _settings
 
 
-def get_setting(key):
+def get_setting(key, default=None):
     """
     Retrieves the settings value for given key.
 
     :param key: settings key
     :type key: str
+    :param default: the default value if setting is not found
+    :type default: mixed
     :returns: object
     """
-    return _settings.get(key)
+    return _settings.get(key, default)
 
 
 def remove_setting(key):
@@ -77,28 +84,43 @@ def remove_setting(key):
     return _settings.pop(key)
 
 
-def update_settings(settings):
+def clear_settings():
+    """
+    Clears the settings store
+
+    :returns: None
+    """
+    _settings.clear()
+
+
+def update_settings(settings, clear=False):
     """
     Add settings from dict.
 
     :param settings: settings dictionary
     :type settings: dict
+    :param clear: clear settings store before updating settings
+    :type clear: bool
     :returns: None
     """
     if settings is None:
         return
     if isinstance(settings, dict):
+        if clear:
+            clear_settings()
         for key, value in list(settings.items()):
             update_setting(key, value)
     else:
         raise TypeError("argument has to be a dict")
 
 
-def apply_default_settings():
+def apply_default_settings(clear=False):
     """
-    Apply default settings. Settings keys different from the default settings
-    will retain.
+    Apply default settings. If 'clear' is False settings keys
+    different from the default settings will retain.
 
+    :param clear: clear settings store before applying default settings
+    :type clear: bool
     :returns: None
     """
-    update_settings(_default_settings)
+    update_settings(_default_settings, clear)

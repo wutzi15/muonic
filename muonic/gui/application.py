@@ -704,10 +704,10 @@ class Application(QtGui.QMainWindow):
 
             if (gps_widget.active() and
                     gps_widget.isEnabled()):
-                if len(gps_widget.gps_dump) <= gps_widget.read_lines:
+                if len(gps_widget.gps_dump) <= gps_widget.GPS_DUMP_LENGTH:
                     gps_widget.gps_dump.append(msg)
-                if len(gps_widget.gps_dump) == gps_widget.read_lines:
-                    gps_widget.calculate()
+                if len(gps_widget.gps_dump) == gps_widget.GPS_DUMP_LENGTH:
+                    gps_widget.update()
                 continue
                 
             status_widget = get_widget("status")
@@ -796,7 +796,7 @@ class Application(QtGui.QMainWindow):
                 self.tab_widget.daqwidget.output_file.close()
 
             if self.tab_widget.decaywidget.active():
-                mtime = now - self.tab_widget.decaywidget.dec_mes_start
+                mtime = now - self.tab_widget.decaywidget.measurement_start
                 mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
                 self.logger.info("The muon decay measurement was active for %f hours" % mtime)
                 newmufilename = self.decayfilename.replace("HOURS",str(mtime))

@@ -987,406 +987,566 @@ class StatusWidget(BaseWidget): # not used yet
         #    self.mainwindow.pulseextractor.pulse_file = False
 
 
-
 class VelocityWidget(BaseWidget):
+    """
+    Shows the muon velocity plot
 
-    def __init__(self,logger,parent=None):
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param parent: parent widget
+    """
+    def __init__(self, logger, parent=None):
         BaseWidget.__init__(self, logger, parent)
-        self.mainwindow = self.parentWidget()
+
         self.upper_channel = 0
         self.lower_channel = 1
-        self.trigger = VelocityTrigger(logger)
-        self.times = []
-        self.binning = (0.,30,25)
-        self.fitrange = (self.binning[0],self.binning[1])
-
-        self.activateVelocity = QtGui.QCheckBox(self)
-        self.activateVelocity.setText(tr("Dialog", "Measure Flight Time", None, QtGui.QApplication.UnicodeUTF8))
-        self.activateVelocity.setObjectName("activate_velocity")
-        self.velocityfit_button = QtGui.QPushButton(tr('MainWindow', 'Fit!')) 
-        self.velocityfitrange_button = QtGui.QPushButton(tr('MainWindow', 'Fit Range')) 
-        displayMuons                 = QtGui.QLabel(self)
-        displayMuons.setObjectName("muoncounter")
         self.muon_counter = 0
-        lastdecay = QtGui.QLabel(self)
-        lastdecay.setObjectName("lastdecay")
-        self.last_muon = None
-        activesince = QtGui.QLabel(self)
-        activesince.setObjectName("activesince")
-        self.active_since = None
-        layout = QtGui.QGridLayout(self)
-        layout.addWidget(self.activateVelocity,0,0,1,3)
-        layout.addWidget(displayMuons, 1,0)
-        layout.addWidget(lastdecay, 2,0)
-        layout.addWidget(activesince, 3,0)
-        self.findChild(QtGui.QLabel,QtCore.QString("muoncounter")).setText(tr("Dialog", "We have detected %d muons "%self.muon_counter ,None, QtGui.QApplication.UnicodeUTF8))
-        self.velocitycanvas = VelocityCanvas(self,logger,binning = self.binning)
-        self.velocitycanvas.setObjectName("velocity_plot")
-        layout.addWidget(self.velocitycanvas,4,0,1,3)
-        ntb = NavigationToolbar(self.velocitycanvas, self)
-        layout.addWidget(ntb,5,0)
-        layout.addWidget(self.velocityfitrange_button,5,1)
-        layout.addWidget(self.velocityfit_button,5,2)
-        self.velocityfitrange_button.setEnabled(False)
-        self.velocityfit_button.setEnabled(False)
-        QtCore.QObject.connect(self.activateVelocity,
-                               QtCore.SIGNAL("clicked()"),
-                               self.activateVelocityClicked
-                               )
-        
-        QtCore.QObject.connect(self.velocityfit_button,
-                              QtCore.SIGNAL("clicked()"),
-                              self.velocityFitClicked
-                              )
 
-        QtCore.QObject.connect(self.velocityfitrange_button,
-                              QtCore.SIGNAL("clicked()"),
-                              self.velocityFitRangeClicked
-                              )
-        self.pulsefile = self.mainwindow.pulseextractor.pulse_file
-        
+        self.binning = (0., 30, 25)
+
+        # default fit range
+        self.fit_range = (self.binning[0], self.binning[1])
+
+        # FIXME: not needed here
+        self.pulse_file = self.parent.pulseextractor.pulse_file
+
+        self.event_data = []
+        self.last_event_time = None
+        self.active_since = None
+
+        # velocity canvas
+        self.plot_canvas = VelocityCanvas(self, logger,
+                                          binning=self.binning)
+
+        # we want the plot canvas to fill as much space as possible
+        self.plot_canvas.setSizePolicy(
+                QtGui.QSizePolicy.Expanding,
+                QtGui.QSizePolicy.Expanding)
+
+        # velocity trigger
+        self.trigger = VelocityTrigger(logger)
+
+        # checkbox and buttons
+        self.checkbox = QtGui.QCheckBox(self)
+        self.checkbox.setText("Measure Flight Time")
+
+        self.fit_button = QtGui.QPushButton('Fit!')
+        self.fit_button.setEnabled(False)
+
+        self.fit_range_button = QtGui.QPushButton('Fit Range')
+        self.fit_range_button.setEnabled(False)
+
+        QtCore.QObject.connect(self.checkbox,
+                               QtCore.SIGNAL("clicked()"),
+                               self.on_checkbox_clicked)
+        QtCore.QObject.connect(self.fit_button, QtCore.SIGNAL("clicked()"),
+                               self.on_fit_clicked)
+        QtCore.QObject.connect(self.fit_range_button,
+                               QtCore.SIGNAL("clicked()"),
+                               self.on_fit_range_clicked)
+
+        self.running_status = None
+        self.muon_counter_label = QtGui.QLabel(self)
+        self.last_event_label = QtGui.QLabel(self)
+        self.active_since_label = QtGui.QLabel(self)
+
+        navigation_toolbar = NavigationToolbar(self.plot_canvas, self)
+
+        # add widgets to layout
+        layout = QtGui.QGridLayout(self)
+        layout.addWidget(self.checkbox, 0, 0, 1, 3)
+        layout.addWidget(self.muon_counter_label, 1, 0)
+        layout.addWidget(self.last_event_label, 2, 0)
+        layout.addWidget(self.active_since_label, 3, 0)
+        layout.addWidget(self.plot_canvas, 4, 0, 1, 3)
+        layout.addWidget(navigation_toolbar, 5, 0)
+        layout.addWidget(self.fit_range_button, 5, 1)
+        layout.addWidget(self.fit_button, 5, 2)
+
+    def on_fit_clicked(self):
+        """
+        Fit the muon velocity histogram
+
+        :returns: None
+        """
+        self.logger.debug("Using fit range of %s" % self.fit_range.__repr__())
+        fit_results = gaussian_fit(
+                bincontent=np.asarray(self.plot_canvas.heights),
+                binning=self.binning, fitrange=self.fit_range)
+
+        if fit_results is not None:
+            self.plot_canvas.show_fit(*fit_results)
+
+    def on_fit_range_clicked(self):
+        """
+        Adjust the fit range
+
+        :returns: None
+        """
+        dialog = FitRangeConfigDialog(
+                upper_lim=(0., 60., self.fit_range[1]),
+                lower_lim=(-1., 60., self.fit_range[0]), dimension='ns')
+
+        if dialog.exec_() == 1:
+            upper_limit = dialog.get_widget_value("upper_limit")
+            lower_limit = dialog.get_widget_value("lower_limit")
+            self.fit_range = (lower_limit, upper_limit)
+
+    def on_checkbox_clicked(self):
+        """
+        Starts or stops detecting muons depending on checkbox state
+
+        :returns: None
+        """
+        if self.checkbox.isChecked():
+            self.start()
+        else:
+            self.stop()
+
     def calculate(self):
-        pulses = self.mainwindow.pulses
+        """
+        Trigger muon flight
+
+        :returns: None
+        """
+        pulses = self.parent.pulses
+
         if pulses is None:
             return
-        flighttime = self.trigger.trigger(pulses,upper_channel=self.upper_channel,lower_channel=self.lower_channel)
-        if flighttime != None and flighttime > 0:
-            #velocity = (self.channel_distance/((10**(-9))*flighttime))/C #flighttime is in ns, return in fractions of C
-            self.logger.info("measured flighttime %s" %flighttime.__repr__())
-            self.times.append(flighttime)
-            self.last_muon = datetime.datetime.now()
+
+        flight_time = self.trigger.trigger(pulses,
+                                           upper_channel=self.upper_channel,
+                                           lower_channel=self.lower_channel)
+
+        if flight_time is not None and flight_time > 0:
+            self.logger.info("measured flight time %s" % flight_time)
+            self.event_data.append(flight_time)
             self.muon_counter += 1
+            self.last_event_time = datetime.datetime.now()
 
-    #FIXME: we should not name this update since update is already a member
     def update(self):
-        self.velocityfitrange_button.setEnabled(True)    
-        self.velocityfit_button.setEnabled(True)
-        self.findChild(VelocityCanvas,QtCore.QString("velocity_plot")).update_plot(self.times)
-        self.times = []
-        self.findChild(QtGui.QLabel,QtCore.QString("muoncounter")).setText(tr("Dialog", "We have detected %d muons "%self.muon_counter ,None, QtGui.QApplication.UnicodeUTF8))
-        self.findChild(QtGui.QLabel,QtCore.QString("lastdecay")).setText(tr("Dialog", "The last muon was detected at %s"%self.last_muon.strftime('%Y-%m-%d %H:%M:%S') ,None, QtGui.QApplication.UnicodeUTF8))
+        """
+        Update widget
 
-    def velocityFitRangeClicked(self):
+        :returns: None
         """
-        fit the muon velocity histogram
-        """
-        config_dialog = FitRangeConfigDialog(
-            upper_lim= (0., 60., self.fitrange[1]), lower_lim= (-1., 60., self.fitrange[0]), dimension ='ns')
-        rv = config_dialog.exec_()
-        if rv == 1:
-            upper_limit  = config_dialog.get_widget_value("upper_limit")
-            lower_limit  = config_dialog.get_widget_value("lower_limit")
-            self.fitrange = (lower_limit,upper_limit)
+        if not self.active() or not self.event_data:
+            return
 
-    def velocityFitClicked(self):
-        """
-        fit the muon velocity histogram
-        """
-        self.logger.debug("Using fitrange of %s" %self.fitrange.__repr__())
-        fitresults = gaussian_fit(bincontent=np.asarray(self.velocitycanvas.heights), binning = self.binning, fitrange = self.fitrange)
-        if not fitresults is None:
-            self.velocitycanvas.show_fit(fitresults[0],fitresults[1],fitresults[2],fitresults[3],fitresults[4],fitresults[5],fitresults[6],fitresults[7])
+        self.fit_range_button.setEnabled(True)
+        self.fit_button.setEnabled(True)
+        self.plot_canvas.update_plot(self.event_data)
 
+        self.muon_counter_label.setText("We have detected %d muons " %
+                                        self.muon_counter)
+        self.last_event_label.setText(
+                "The last muon was detected at %s" %
+                self.last_event_time.strftime('%Y-%m-%d %H:%M:%S'))
 
-    def activateVelocityClicked(self):
+        self.event_data = []
+
+    def start(self):
         """
-        Perform extra actions when the checkbox is clicked
+        Start detecting muons
+
+        :returns: None
+        """
+        if self.active():
+            return
+
+        # launch the settings dialog
+        dialog = VelocityConfigDialog()
+
+        if dialog.exec_() == 1:
+            self.checkbox.setChecked(True)
+            self.muon_counter_label.setText("We have detected %d muons " %
+                                            self.muon_counter)
+            self.active_since = datetime.datetime.now()
+            self.active_since_label.setText(
+                    "The measurement is active since %s" %
+                    self.active_since.strftime('%Y-%m-%d %H:%M:%S'))
+
+            for chan in range(4):
+                if dialog.get_widget_value("upper_checkbox_%d" % chan):
+                    self.upper_channel = chan + 1  # chan index is shifted
+                if dialog.get_widget_value("lower_checkbox_%d" % chan):
+                    self.lower_channel = chan + 1  # chan index is shifted
+
+            self.logger.info("Switching off decay measurement if running!")
+            if self.parent.tab_widget.decaywidget.active():
+                self.parent.tab_widget.decaywidget.stop()
+
+            self.running_status = QtGui.QLabel("Muon velocity " +
+                                               "measurement active!")
+            self.parent.statusbar.addPermanentWidget(self.running_status)
+
+            # enable counter
+            self.daq_put("CE")
+
+            self.active(True)
+
+            self.parent.tab_widget.ratewidget.start()
+
+            # FIXME: this has nothing to do here!
+            if not self.pulse_file:
+                self.parent.pulsefilename = os.path.join(
+                        DATA_PATH, "%s_%s_HOURS_%s" % (
+                            self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
+                            self.parent.opts.user))
+
+                self.parent.pulse_mes_start = self.parent.now
+                self.parent.pulseextractor.pulse_file = open(
+                        self.parent.pulsefilename, 'w')
+                self.logger.debug("Starting to write pulses to %s" %
+                                  self.parent.pulsefilename)
+                self.parent.writepulses = True
+        else:
+            self.logger.info("Moun velocity config canceled")
+            self.active(False)
+            self.checkbox.setChecked(False)
+            self.active_since_label.setText("")
+
+    def stop(self):
+        """
+        Stop detecting muons
+
+        :returns: None
         """
         if not self.active():
-            config_dialog = VelocityConfigDialog()
-            rv = config_dialog.exec_()
-            if rv == 1:
-                self.activateVelocity.setChecked(True)
-                self.active_since = datetime.datetime.now()
-                self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "The measurement is active since %s"%self.active_since.strftime('%Y-%m-%d %H:%M:%S') ,None, QtGui.QApplication.UnicodeUTF8))
+            return
 
-                for chan,ch_label in enumerate(["0","1","2","3"]):
-                    if config_dialog.get_widget_value("upper_checkbox_" + ch_label):
-                        self.upper_channel = chan + 1 # ch index is shifted
-                        
-                for chan,ch_label in enumerate(["0","1","2","3"]):
-                    if config_dialog.get_widget_value("lower_checkbox_" + ch_label):
-                        self.lower_channel = chan + 1 #
-            
-                self.logger.info("Switching off decay measurement if running!")
-                if self.parentWidget().parentWidget().decaywidget.active():
-                    self.parentWidget().parentWidget().decaywidget.activateMuondecayClicked()
-                self.active(True)
-                self.parentWidget().parentWidget().parentWidget().daq.put("CE")
-                self.parentWidget().parentWidget().ratewidget.start()
-                if not self.pulsefile:
-                    self.mainwindow.pulsefilename = \
-                            os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
-                                                                       "P",
-                                                                       self.mainwindow.opts.user[0],
-                                                                       self.mainwindow.opts.user[1]) )
-                    self.mainwindow.pulse_mes_start = self.mainwindow.now
-                    self.mainwindow.pulseextractor.pulse_file = open(self.mainwindow.pulsefilename,'w')
-                    self.logger.debug("Starting to write pulses to %s" %self.mainwindow.pulsefilename)
-                    self.mainwindow.writepulses = True
+        # FIXME: this has nothing to do here!
+        if not self.pulse_file:
+            self.parent.pulsefilename = ''
+            self.parent.pulse_mes_start = False
+            if self.parent.pulseextractor.pulse_file:
+                self.parent.pulseextractor.pulse_file.close()
+            self.parent.pulseextractor.pulse_file = False
 
-
-            else:
-                self.activateVelocity.setChecked(False)
-                self.active(False)
-                self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "" ,None, QtGui.QApplication.UnicodeUTF8))
-        else:
-            self.activateVelocity.setChecked(False)            
-            self.active(False)
-            self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "" ,None, QtGui.QApplication.UnicodeUTF8))
-            if not self.pulsefile:
-                self.mainwindow.pulsefilename = ''
-                self.mainwindow.pulse_mes_start = False
-                if self.mainwindow.pulseextractor.pulse_file:
-                    self.mainwindow.pulseextractor.pulse_file.close()
-                self.mainwindow.pulseextractor.pulse_file = False
-
-            self.mainwindow.tab_widget.ratewidget.stop()
+        self.active(False)
+        self.checkbox.setChecked(False)
+        self.active_since_label.setText("")
+        self.parent.statusbar.removeWidget(self.running_status)
+        self.parent.tab_widget.ratewidget.stop()
 
 
 class DecayWidget(BaseWidget):
-    
+    """
+    Shows the muon decay plot
+
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param parent: parent widget
+    """
     def __init__(self, logger, parent=None):
         BaseWidget.__init__(self, logger, parent)
-        self.logger = logger
-        self.mufit_button = QtGui.QPushButton(tr('MainWindow', 'Fit!'))
-        self.mainwindow = self.parentWidget()        
-        self.mufit_button.setEnabled(False)
-        self.decayfitrange_button = QtGui.QPushButton(tr('MainWindow', 'Fit Range')) 
-        self.decayfitrange_button.setEnabled(False)
-        self.lifetime_monitor = LifetimeCanvas(self,logger)
-        self.minsinglepulsewidth = 0
-        self.maxsinglepulsewidth = 100000 #inf
-        self.mindoublepulsewidth = 0
-        self.maxdoublepulsewidth = 100000 #inf
-        self.muondecaycounter    = 0
-        self.lastdecaytime       = 'None'
-        self.pulsefile = self.parentWidget().pulseextractor.pulse_file
-            
-        self.singlepulsechannel  = 0
-        self.doublepulsechannel  = 1
-        self.vetopulsechannel    = 2 
-        self.decay_mintime       = 0
-        self.active(False)
-        self.trigger             = DecayTriggerThorough(logger)
-        self.decay               = []
-        self.mu_file             = open("/dev/null","w") 
-        self.dec_mes_start       = None
+
+        # default decay configuration
+        self.min_single_pulse_width = 0
+        self.max_single_pulse_width = 100000  # inf
+        self.min_double_pulse_width = 0
+        self.max_double_pulse_width = 100000  # inf
+        self.muon_counter = 0
+        self.single_pulse_channel = 0
+        self.double_pulse_channel = 1
+        self.veto_pulse_channel = 2
+        self.decay_min_time = 0
+
+        # ignore first bin because of after pulses,
+        # see https://github.com/achim1/muonic/issues/39
+        self.binning = (0, 10, 21)
+
+        # default fit range
+        self.fit_range = (1.5, 10.)
+
+        # FIXME: not needed here
+        self.pulse_file = self.parent.pulseextractor.pulse_file
+
+        self.event_data = []
+        self.last_event_time = None
+        self.active_since = None
+
+        self.mu_file = None
+        self.measurement_start = None
+
         self.previous_coinc_time_03 = "00"
         self.previous_coinc_time_02 = "0A"
-        self.binning = (0,10,21)
-        self.fitrange = (1.5,10.) # ignore first bin because of afterpulses, 
-                                  # see https://github.com/achim1/muonic/issues/39 
 
-        QtCore.QObject.connect(self.mufit_button,
-                              QtCore.SIGNAL("clicked()"),
-                              self.mufitClicked
-                              )
-        QtCore.QObject.connect(self.decayfitrange_button,
-                              QtCore.SIGNAL("clicked()"),
-                              self.decayFitRangeClicked
-                              )
+        # lifetime plot canvas
+        self.plot_canvas = LifetimeCanvas(self, logger)
 
-        ntb1 = NavigationToolbar(self.lifetime_monitor, self)
+        # we want the plot canvas to fill as much space as possible
+        self.plot_canvas.setSizePolicy(
+                QtGui.QSizePolicy.Expanding,
+                QtGui.QSizePolicy.Expanding)
 
-        # activate Muondecay mode with a checkbox
-        self.activateMuondecay = QtGui.QCheckBox(self)
-        self.activateMuondecay.setObjectName("activate_mudecay")
-        self.activateMuondecay.setText(tr("Dialog", "Check for Decayed Muons", None, QtGui.QApplication.UnicodeUTF8))
-        QtCore.QObject.connect(self.activateMuondecay,
-                              QtCore.SIGNAL("clicked()"),
-                              self.activateMuondecayClicked
-                              )
-        displayMuons                 = QtGui.QLabel(self)
-        displayMuons.setObjectName("muoncounter")
-        lastDecay                    = QtGui.QLabel(self)
-        lastDecay.setObjectName("lastdecay")
-        activesince = QtGui.QLabel(self)
-        activesince.setObjectName("activesince")
-        self.active_since = None
- 
-        decay_tab = QtGui.QGridLayout(self)
-        decay_tab.addWidget(self.activateMuondecay,0,0)
-        decay_tab.addWidget(displayMuons,1,0)
-        decay_tab.addWidget(lastDecay,2,0)
-        decay_tab.addWidget(activesince, 3,0)
-        decay_tab.addWidget(self.lifetime_monitor,4,0,1,2)
-        decay_tab.addWidget(ntb1,5,0)
-        decay_tab.addWidget(self.mufit_button,5,2)
-        decay_tab.addWidget(self.decayfitrange_button,5,1)
-        self.findChild(QtGui.QLabel,QtCore.QString("muoncounter")).setText(tr("Dialog", "We have %i decayed muons " %self.muondecaycounter, None, QtGui.QApplication.UnicodeUTF8))
-        #self.findChild(QtGui.QLabel,QtCore.QString("lastdecay")).setText(tr("Dialog", "Last detected decay at time %s " %self.lastdecaytime, None, QtGui.QApplication.UnicodeUTF8))
-        #self.decaywidget = self.widget(1)
+        # decay trigger
+        self.trigger = DecayTriggerThorough(logger)
+
+        # checkbox and buttons
+        self.checkbox = QtGui.QCheckBox(self)
+        self.checkbox.setText("Check for Decayed Muons")
+
+        self.fit_button = QtGui.QPushButton("Fit!")
+        self.fit_button.setEnabled(False)
+
+        self.fit_range_button = QtGui.QPushButton("Fit Range")
+        self.fit_range_button.setEnabled(False)
+
+        QtCore.QObject.connect(self.checkbox,
+                               QtCore.SIGNAL("clicked()"),
+                               self.on_checkbox_clicked)
+        QtCore.QObject.connect(self.fit_button, QtCore.SIGNAL("clicked()"),
+                               self.on_fit_clicked)
+        QtCore.QObject.connect(self.fit_range_button,
+                               QtCore.SIGNAL("clicked()"),
+                               self.on_fit_range_clicked)
+
+        self.running_status = None
+        self.muon_counter_label = QtGui.QLabel(self)
+        self.last_event_label = QtGui.QLabel(self)
+        self.active_since_label = QtGui.QLabel(self)
+
+        navigation_toolbar = NavigationToolbar(self.plot_canvas, self)
+
+        # add widgets to layout
+        layout = QtGui.QGridLayout(self)
+        layout.addWidget(self.checkbox, 0, 0, 1, 3)
+        layout.addWidget(self.muon_counter_label, 1, 0)
+        layout.addWidget(self.last_event_label, 2, 0)
+        layout.addWidget(self.active_since_label, 3, 0)
+        layout.addWidget(self.plot_canvas, 4, 0, 1, 3)
+        layout.addWidget(navigation_toolbar, 5, 0)
+        layout.addWidget(self.fit_range_button, 5, 1)
+        layout.addWidget(self.fit_button, 5, 2)
+      
+    def on_fit_clicked(self):
+        """
+        Fit the muon decay histogram
+
+        :returns: None
+        """
+        fit_results = fit(bincontent=np.asarray(self.plot_canvas.heights),
+                          binning=self.binning, fitrange=self.fit_range)
+
+        if fit_results is not None:
+            self.plot_canvas.show_fit(*fit_results)
+
+    def on_fit_range_clicked(self):
+        """
+        Adjust the fit range
+
+        :returns: None
+        """
+        dialog = FitRangeConfigDialog(
+                upper_lim=(0., 10., self.fit_range[1]),
+                lower_lim=(-1., 10., self.fit_range[0]),
+                dimension='microsecond')
+
+        if dialog.exec_() == 1:
+            upper_limit = dialog.get_widget_value("upper_limit")
+            lower_limit = dialog.get_widget_value("lower_limit")
+            self.fit_range = (lower_limit, upper_limit)
+
+    def on_checkbox_clicked(self):
+        """
+        Starts or stops the muon decay check depending on checkbox state
+
+        :returns: None
+        """
+        if self.checkbox.isChecked():
+            self.start()
+        else:
+            self.stop()
 
     def calculate(self):
-        pulses = self.mainwindow.pulses
-        #single_channel = self.singlepulsechannel, double_channel = self.doublepulsechannel, veto_channel = self.vetopulsechannel,mindecaytime = self.decay_mintime,minsinglepulsewidth = minsinglepulsewidth,maxsinglepulsewidth = maxsinglepulsewidth, mindoublepulsewidth = mindoublepulsewidth, maxdoublepulsewidth = maxdoublepulsewidth):
-        decay =  self.trigger.trigger(pulses, single_channel = self.singlepulsechannel, double_channel = self.doublepulsechannel, veto_channel = self.vetopulsechannel, min_decay_time= self.decay_mintime,
-                                      min_single_pulse_width= self.minsinglepulsewidth, max_single_pulse_width= self.maxsinglepulsewidth, min_double_pulse_width= self.mindoublepulsewidth, max_double_pulse_width= self.maxdoublepulsewidth)
-        if decay != None:
+        """
+        Trigger muon decay
+
+        :returns: None
+        """
+        pulses = self.parent.pulses
+        decay = self.trigger.trigger(
+                pulses, single_channel=self.single_pulse_channel,
+                double_channel=self.double_pulse_channel,
+                veto_channel=self.veto_pulse_channel,
+                min_decay_time=self.decay_min_time,
+                min_single_pulse_width=self.min_single_pulse_width,
+                max_single_pulse_width=self.max_single_pulse_width,
+                min_double_pulse_width=self.min_double_pulse_width,
+                max_double_pulse_width=self.max_double_pulse_width)
+
+        if decay is not None:
             when = time.asctime()
-            self.decay.append((decay/1000,when))
-            #devide by 1000 to get microseconds
-            
-            self.logger.info('We have found a decaying muon with a decaytime of %f at %s' %(decay,when)) 
-            self.muondecaycounter += 1
-            self.lastdecaytime = when
-      
-    def mufitClicked(self):
-        """
-        fit the muon decay histogram
-        """
-        fitresults = fit(bincontent=np.asarray(self.lifetime_monitor.heights), binning = self.binning, fitrange = self.fitrange)
-        if not fitresults is None:
-            self.lifetime_monitor.show_fit(fitresults[0],fitresults[1],\
-                                           fitresults[2],fitresults[3],\
-                                           fitresults[4],fitresults[5],\
-                                           fitresults[6],fitresults[7])
+            self.event_data.append((decay / 1000, when))
+            self.muon_counter += 1
+            self.last_event_time = when
+            self.logger.info("We have found a decaying muon with a " +
+                             "decay time of %f at %s" % (decay, when))
 
     def update(self):
-        if not self.decay:
+        """
+        Update widget
+
+        :returns: None
+        """
+        if not self.active() or not self.event_data:
             return
 
-        self.mufit_button.setEnabled(True)
-        self.decayfitrange_button.setEnabled(True)
+        decay_times = [decay_time[0] for decay_time in self.event_data]
 
-        decay_times =  [decay_time[0] for decay_time in self.decay]
-        self.lifetime_monitor.update_plot(decay_times)
-        self.findChild(QtGui.QLabel,QtCore.QString("muoncounter")).setText(tr("Dialog", "We have %i decayed muons " %self.muondecaycounter, None, QtGui.QApplication.UnicodeUTF8))
-        self.findChild(QtGui.QLabel,QtCore.QString("lastdecay")).setText(tr("Dialog", "Last detected decay at time %s " %self.lastdecaytime, None, QtGui.QApplication.UnicodeUTF8))
-        for muondecay in self.decay:
-            #muondecay = self.decay[0]
-            muondecay_time = muondecay[1].replace(' ','_')
+        self.fit_button.setEnabled(True)
+        self.fit_range_button.setEnabled(True)
+        self.plot_canvas.update_plot(decay_times)
+
+        self.muon_counter_label.setText("We have %d decayed muons " %
+                                        self.muon_counter)
+        self.last_event_label.setText(
+                "Last detected decay at time %s " %
+                self.last_event_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+        for decay in self.event_data:
+            decay_time = decay[1].replace(' ', '_')
             self.mu_file.write('Decay ')
-            self.mu_file.write(muondecay_time.__repr__() + ' ')
-            self.mu_file.write(muondecay[0].__repr__())
+            self.mu_file.write(decay_time.__repr__() + ' ')
+            self.mu_file.write(decay[0].__repr__())
             self.mu_file.write('\n')
-            self.decay = []
+            self.event_data = []
 
-
-    def decayFitRangeClicked(self):
+    def start(self):
         """
-        fit the muon decay histogram
+        Start check for muon decay
+
+        :returns: None
         """
-        config_dialog = FitRangeConfigDialog(
-            upper_lim= (0., 10., self.fitrange[1]), lower_lim= (-1., 10., self.fitrange[0]), dimension ='microsecond')
-        rv = config_dialog.exec_()
-        if rv == 1:
-            upper_limit  = config_dialog.get_widget_value("upper_limit")
-            lower_limit  = config_dialog.get_widget_value("lower_limit")
-            self.fitrange = (lower_limit,upper_limit)
+        if self.active():
+            return
 
-    def activateMuondecayClicked(self):
-        """
-        What should be done if we are looking for mu-decays?
-        """
- 
-        now = datetime.datetime.now()
-        #if not self.mainwindow.mudecaymode:
-        if not self.active():
-                self.activateMuondecay.setChecked(False)
-                # launch the settings window
-                config_window = DecayConfigDialog()
-                rv = config_window.exec_()
-                if rv == 1:
-                    self.activateMuondecay.setChecked(True)
-                    self.active_since = datetime.datetime.now()
-                    chan0_single = config_window.get_widget_value("single_checkbox_0")
-                    chan1_single = config_window.get_widget_value("single_checkbox_1")
-                    chan2_single = config_window.get_widget_value("single_checkbox_2")
-                    chan3_single = config_window.get_widget_value("single_checkbox_3")
-                    chan0_double = config_window.get_widget_value("double_checkbox_0")
-                    chan1_double = config_window.get_widget_value("double_checkbox_1")
-                    chan2_double = config_window.get_widget_value("double_checkbox_2")
-                    chan3_double = config_window.get_widget_value("double_checkbox_3")
-                    chan0_veto   = config_window.get_widget_value("veto_checkbox_0")
-                    chan1_veto   = config_window.get_widget_value("veto_checkbox_1")
-                    chan2_veto   = config_window.get_widget_value("veto_checkbox_2")
-                    chan3_veto   = config_window.get_widget_value("veto_checkbox_3")
-                    self.decay_mintime   = int(config_window.get_widget_value("min_pulse_time"))
-                    if config_window.get_widget_value("set_pulse_width_conditions"):
-                        self.minsinglepulsewidth = int(config_window.get_widget_value("min_single_pulse_width"))
-                        self.maxsinglepulsewidth = int(config_window.get_widget_value("max_single_pulse_width"))
-                        self.mindoublepulsewidth = int(config_window.get_widget_value("min_double_pulse_width"))
-                        self.maxdoublepulsewidth = int(config_window.get_widget_value("max_double_pulse_width"))
-                    
-                    self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "The measurement is active since %s"%self.active_since.strftime('%Y-%m-%d %H:%M:%S') ,None, QtGui.QApplication.UnicodeUTF8))
-                    for channel in enumerate([chan0_single,chan1_single,chan2_single,chan3_single]):
-                        if channel[1]:
-                            self.singlepulsechannel = channel[0] + 1 # there is a mapping later from this to an index with an offset
-                # FIXME! 
-                    for channel in enumerate([chan0_double,chan1_double,chan2_double,chan3_double]):
-                        if channel[1]:
-                            self.doublepulsechannel = channel[0] + 1 # there is a mapping later from this to an index with an offset
+        self.checkbox.setChecked(False)
 
-                    for channel in enumerate([chan0_veto,chan1_veto,chan2_veto,chan3_veto]):
-                        if channel[1]:
-                            self.vetopulsechannel = channel[0] + 1 # there is a mapping later from this to an index with an offset
-                    self.logger.info("Switching off velocity measurement if running!")
-                    if self.parentWidget().parentWidget().velocitywidget.active():
-                        self.parentWidget().parentWidget().velocitywidget.activateVelocityClicked()
+        # launch the settings dialog
+        dialog = DecayConfigDialog()
 
-                    self.logger.warn("We now activate the Muondecay mode!\n All other Coincidence/Veto settings will be overriden!")
+        if dialog.exec_() == 1:
+            self.checkbox.setChecked(True)
+            self.muon_counter_label.setText("We have %d decayed muons " %
+                                            self.muon_counter)
+            self.active_since = datetime.datetime.now()
+            self.active_since_label.setText(
+                    "The measurement is active since %s" %
+                    self.active_since.strftime('%Y-%m-%d %H:%M:%S'))
 
-                    self.logger.warning("Changing gate width and enabeling pulses") 
-                    self.logger.info("Looking for single pulse in Channel %i" %(self.singlepulsechannel - 1))
-                    self.logger.info("Looking for double pulse in Channel %i" %(self.doublepulsechannel - 1 ))
-                    self.logger.info("Using veto pulses in Channel %i"        %(self.vetopulsechannel - 1 ))
+            self.decay_min_time = int(
+                    dialog.get_widget_value("min_pulse_time"))
 
-                    self.mu_label = QtGui.QLabel(tr('MainWindow','Muon Decay measurement active!'))
-                    self.parentWidget().parentWidget().parentWidget().statusbar.addPermanentWidget(self.mu_label)
+            if dialog.get_widget_value("set_pulse_width_conditions"):
+                self.min_single_pulse_width = int(
+                        dialog.get_widget_value("min_single_pulse_width"))
+                self.max_single_pulse_width = int(
+                        dialog.get_widget_value("max_single_pulse_width"))
+                self.min_double_pulse_width = int(
+                        dialog.get_widget_value("min_double_pulse_width"))
+                self.max_double_pulse_width = int(
+                        dialog.get_widget_value("max_double_pulse_width"))
 
-                    self.parentWidget().parentWidget().parentWidget().daq.put("DC")
+            for chan in range(4):
+                if dialog.get_widget_value("single_checkbox_%d" % chan):
+                    self.single_pulse_channel = chan + 1  # ch index is shifted
+                if dialog.get_widget_value("double_checkbox_%d" % chan):
+                    self.double_pulse_channel = chan + 1  # ch index is shifted
+                if dialog.get_widget_value("veto_checkbox_%d" % chan):
+                    self.veto_pulse_channel = chan + 1  # ch index is shifted
 
-                    self.parentWidget().parentWidget().parentWidget().daq.put("CE") 
-                    self.parentWidget().parentWidget().parentWidget().daq.put("WC 03 04")
-                    self.parentWidget().parentWidget().parentWidget().daq.put("WC 02 0A")
+            self.logger.info("Switching off velocity measurement if running!")
 
-                    # this should set the veto to none (because we have a software veto)
-                    # and the coinincidence to single, so we take all pulses
-                    self.parentWidget().parentWidget().parentWidget().daq.put("WC 00 0F")
-                  
-                    self.mu_file = open(self.parentWidget().parentWidget().parentWidget().decayfilename,'w')        
-                    self.dec_mes_start = now
-                    #self.decaywidget.findChild("activate_mudecay").setChecked(True)
-                    self.active(True)
-                    #FIXME: is this intentional?
-                    self.parentWidget().parentWidget().ratewidget.start()
-                    self.pulsefile = self.mainwindow.pulseextractor.pulse_file
-                    if not self.pulsefile:
-                        self.mainwindow.pulsefilename = \
-                            os.path.join(DATA_PATH,"%s_%s_HOURS_%s%s" %(self.mainwindow.now.strftime('%Y-%m-%d_%H-%M-%S'),
-                                                                       "P",
-                                                                       self.mainwindow.opts.user[0],
-                                                                       self.mainwindow.opts.user[1]) )
-                        self.mainwindow.pulse_mes_start = self.mainwindow.now
-                        self.mainwindow.pulseextractor.pulse_file = open(self.mainwindow.pulsefilename,'w')
-                        self.logger.debug("Starting to write pulses to %s" %self.mainwindow.pulsefilename)
-                        self.mainwindow.writepulses = True
+            if self.parent.tab_widget.velocitywidget.active():
+                self.parent.tab_widget.velocitywidget.stop()
 
-                else:
-                    self.activateMuondecay.setChecked(False)
-                    self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "" ,None, QtGui.QApplication.UnicodeUTF8))
-                    self.active(False)
+            self.logger.warn("We now activate the muon decay mode!\n" +
+                             "All other Coincidence/Veto settings will " +
+                             "be overriden!")
 
+            self.logger.warning("Changing gate width and enabeling pulses")
+            self.logger.info("Looking for single pulse in Channel %d" %
+                             (self.single_pulse_channel - 1))
+            self.logger.info("Looking for double pulse in Channel %d" %
+                             (self.double_pulse_channel - 1))
+            self.logger.info("Using veto pulses in Channel %i" %
+                             (self.veto_pulse_channel - 1))
+
+            self.running_status = QtGui.QLabel("Muon Decay " +
+                                               "measurement active!")
+            self.parent.statusbar.addPermanentWidget(self.running_status)
+
+            # configure DAQ card with coincidence/veto settings
+            self.daq_put("DC")
+            self.daq_put("CE")
+            self.daq_put("WC 03 04")
+            self.daq_put("WC 02 0A")
+
+            # this should set the veto to none (because we have a
+            # software veto) and the coincidence to single,
+            # so we take all pulses
+            self.daq_put("WC 00 0F")
+
+            self.mu_file = open(self.parent.decayfilename, 'w')
+            self.measurement_start = datetime.datetime.now()
+            self.active(True)
+
+            # FIXME: is this intentional?
+            self.parent.tab_widget.ratewidget.start()
+            self.pulse_file = self.parent.pulseextractor.pulse_file
+
+            # FIXME: this has nothing to do here!
+            if not self.pulse_file:
+                self.parent.pulsefilename = os.path.join(
+                        DATA_PATH, "%s_%s_HOURS_%s" % (
+                            self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
+                            self.parent.opts.user))
+
+                self.parent.pulse_mes_start = self.parent.now
+                self.parent.pulseextractor.pulse_file = open(
+                        self.parent.pulsefilename, 'w')
+                self.logger.debug("Starting to write pulses to %s" %
+                                  self.parent.pulsefilename)
+                self.parent.writepulses = True
         else:
-            reset_time = "WC 03 " + self.previous_coinc_time_03
-            self.parentWidget().parentWidget().parentWidget().daq.put(reset_time)
-            reset_time = "WC 02 " + self.previous_coinc_time_02
-            self.parentWidget().parentWidget().parentWidget().daq.put(reset_time)
-            self.logger.info('Muondecay mode now deactivated, returning to previous setting (if available)')
-            self.parentWidget().parentWidget().parentWidget().statusbar.removeWidget(self.mu_label)
-            #self.parentWidget().parentWidget().parentWidget().mudecaymode = False
-            mtime = now - self.dec_mes_start
-            mtime = round(mtime.seconds/(3600.),2) + mtime.days *86400
-            self.logger.info("The muon decay measurement was active for %f hours" % mtime)
-            newmufilename = self.parentWidget().parentWidget().parentWidget().decayfilename.replace("HOURS",str(mtime))
-            shutil.move(self.parentWidget().parentWidget().parentWidget().decayfilename,newmufilename)
-            #self.parentWidget().parentWidget().parentWidget().daq.put("CD")
+            self.logger.info("Moun decay config canceled")
             self.active(False)
-            self.activateMuondecay.setChecked(False)
-            self.findChild(QtGui.QLabel,QtCore.QString("activesince")).setText(tr("Dialog", "" ,None, QtGui.QApplication.UnicodeUTF8))
-            self.parentWidget().parentWidget().ratewidget.stop()
+            self.checkbox.setChecked(False)
+            self.active_since_label.setText("")
+
+    def stop(self):
+        """
+        Stop check for muon decay
+
+        :returns: None
+        """
+        if not self.active():
+            return
+
+        now = datetime.datetime.now()
+
+        # reset coincidence times
+        self.daq_put("WC 03 " + self.previous_coinc_time_03)
+        self.daq_put("WC 02 " + self.previous_coinc_time_02)
+
+        self.logger.info("Muon decay mode now deactivated, returning to " +
+                         "previous setting (if available)")
+
+        mtime = now - self.measurement_start
+        mtime = round(mtime.seconds / 3600., 2) + mtime.days * 86400
+        self.logger.info("The muon decay measurement was " +
+                         "active for %f hours" % mtime)
+
+        newmufilename = self.parent.decayfilename.replace("HOURS", str(mtime))
+        shutil.move(self.parent.decayfilename, newmufilename)
+
+        self.active(False)
+        self.checkbox.setChecked(False)
+        self.active_since_label.setText("")
+        self.parent.statusbar.removeWidget(self.running_status)
+        self.parent.tab_widget.ratewidget.stop()
 
 
 class DAQWidget(BaseWidget):
@@ -1399,7 +1559,6 @@ class DAQWidget(BaseWidget):
     :type logger: logging.Logger
     :param parent: parent widget
     """
-
     def __init__(self, logger, parent=None):
         BaseWidget.__init__(self, logger, parent)
 
@@ -1418,6 +1577,7 @@ class DAQWidget(BaseWidget):
         # daq msg log
         self.daq_msg_log = QtGui.QPlainTextEdit()
         self.daq_msg_log.setReadOnly(True)
+        self.daq_msg_log.setFont(QtGui.QFont("monospace"))
         # 500 lines history
         self.daq_msg_log.document().setMaximumBlockCount(500)
 
@@ -1587,189 +1747,153 @@ class DAQWidget(BaseWidget):
 
 
 class GPSWidget(BaseWidget):
+    """
+    Shows GPS information
+
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param parent: parent widget
+    """
+    GPS_DUMP_LENGTH = 13
 
     def __init__(self, logger, parent=None):
         BaseWidget.__init__(self, logger, parent)
-        self.mainwindow = self.parentWidget()
-        self.logger = logger
+
         self.gps_dump = []
-        self.read_lines = 13
 
-        self.label           = QtGui.QLabel(tr('MainWindow','GPS Display:'))
-        self.refresh_button  = QtGui.QPushButton(tr('MainWindow','Show GPS'))
-        self.save_button     = QtGui.QPushButton(tr('MainWindow', 'Save to File'))
+        self.refresh_button = QtGui.QPushButton("Show GPS")
+        QtCore.QObject.connect(self.refresh_button, QtCore.SIGNAL("clicked()"),
+                               self.on_refresh_clicked)
 
-        QtCore.QObject.connect(self.refresh_button,
-                              QtCore.SIGNAL("clicked()"),
-                              self.on_refresh_clicked
-                              )
-        QtCore.QObject.connect(self.save_button,
-                                QtCore.SIGNAL("clicked()"),
-                                self.on_save_clicked
-                                )
-        self.text_box = QtGui.QPlainTextEdit()
-        self.text_box.setReadOnly(True)
+        self.gps_status_log = QtGui.QPlainTextEdit()
+        self.gps_status_log.setReadOnly(True)
+        self.gps_status_log.setFont(QtGui.QFont("monospace"))
         # only 500 lines history
-        self.text_box.document().setMaximumBlockCount(500)
-        self.status_label = QtGui.QLabel(tr('MainWindow','Status: '))
-        self.time_label = QtGui.QLabel(tr('MainWindow','GPS time: '))
-        self.satellites_label = QtGui.QLabel(tr('MainWindow','#Satellites: '))
-        self.chksum_label = QtGui.QLabel(tr('MainWindow','Checksum: '))
-        self.latitude_label = QtGui.QLabel(tr('MainWindow','Latitude: '))
-        self.longitude_label = QtGui.QLabel(tr('MainWindow','Longitude: '))
-        self.altitude_label = QtGui.QLabel(tr('MainWindow','Altitude: '))
-        self.posfix_label = QtGui.QLabel(tr('MainWindow','PosFix: '))
-        self.status_box = QtGui.QLabel(tr('MainWindow',' Not read out'))
-        self.time_box = QtGui.QLabel(tr('MainWindow','--'))
-        self.satellites_box = QtGui.QLabel(tr('MainWindow','--'))
-        self.chksum_box = QtGui.QLabel(tr('MainWindow','--'))
-        self.latitude_box = QtGui.QLabel(tr('MainWindow','--'))
-        self.longitude_box = QtGui.QLabel(tr('MainWindow','--'))
-        self.altitude_box = QtGui.QLabel(tr('MainWindow','--'))
-        self.posfix_box = QtGui.QLabel(tr('MainWindow','--'))
+        self.gps_status_log.document().setMaximumBlockCount(500)
 
-        gps_layout = QtGui.QGridLayout(self)
-        gps_layout.addWidget(self.label,0,0,1,4)
-        gps_layout.addWidget(self.status_label,1,0)
-        gps_layout.addWidget(self.time_label,2,0)
-        gps_layout.addWidget(self.satellites_label,3,0)
-        gps_layout.addWidget(self.chksum_label,4,0)
-        gps_layout.addWidget(self.latitude_label,1,2)
-        gps_layout.addWidget(self.longitude_label,2,2)
-        gps_layout.addWidget(self.altitude_label,3,2)
-        gps_layout.addWidget(self.posfix_label,4,2)
-        gps_layout.addWidget(self.status_box,1,1)
-        gps_layout.addWidget(self.time_box,2,1)
-        gps_layout.addWidget(self.satellites_box,3,1)
-        gps_layout.addWidget(self.chksum_box,4,1)
-        gps_layout.addWidget(self.latitude_box,1,3)
-        gps_layout.addWidget(self.longitude_box,2,3)
-        gps_layout.addWidget(self.altitude_box,3,3)
-        gps_layout.addWidget(self.posfix_box,4,3)
-        gps_layout.addWidget(self.text_box,6,0,1,4)
-        gps_layout.addWidget(self.refresh_button,7,0,1,4) 
-        #gps_layout.addWidget(self.save_button,1,2) 
+        self.status_box = QtGui.QLabel("Not read out")
+        self.gps_time_box = QtGui.QLabel("--")
+        self.satellites_box = QtGui.QLabel("--")
+        self.checksum_box = QtGui.QLabel("--")
+        self.latitude_box = QtGui.QLabel("--")
+        self.longitude_box = QtGui.QLabel("--")
+        self.altitude_box = QtGui.QLabel("--")
+        self.pos_fix_box = QtGui.QLabel("--")
 
-        if self.active():
-            self.logger.info("Activated GPS display.")
-            self.on_refresh_clicked()
+        # add widgets to layout
+        layout = QtGui.QGridLayout(self)
+        layout.addWidget(QtGui.QLabel("GPS Display:"), 0, 0, 1, 4)
+        layout.addWidget(QtGui.QLabel("Status: "), 1, 0)
+        layout.addWidget(self.status_box, 1, 1)
+        layout.addWidget(QtGui.QLabel("GPS time: "), 2, 0)
+        layout.addWidget(self.gps_time_box, 2, 1)
+        layout.addWidget(QtGui.QLabel("#Satellites: "), 3, 0)
+        layout.addWidget(self.satellites_box, 3, 1)
+        layout.addWidget(QtGui.QLabel("Checksum: "), 4, 0)
+        layout.addWidget(self.checksum_box, 4, 1)
+        layout.addWidget(QtGui.QLabel("Latitude: "), 1, 2)
+        layout.addWidget(self.latitude_box, 1, 3)
+        layout.addWidget(QtGui.QLabel("Longitude: "), 2, 2)
+        layout.addWidget(self.longitude_box, 2, 3)
+        layout.addWidget(QtGui.QLabel("Altitude: "), 3, 2)
+        layout.addWidget(self.altitude_box, 3, 3)
+        layout.addWidget(QtGui.QLabel("PosFix: "), 4, 2)
+        layout.addWidget(self.pos_fix_box, 4, 3)
+        layout.addWidget(self.gps_status_log, 6, 0, 1, 4)
+        layout.addWidget(self.refresh_button, 7, 0, 1, 4)
+
+        self.setLayout(layout)
 
     def on_refresh_clicked(self):
         """
         Display/refresh the GPS information
+
+        :returns: None
         """
         self.refresh_button.setEnabled(False)
         self.gps_dump = [] 
         self.logger.info('Reading GPS.')
-        self.mainwindow.process_incoming()
-        self.switch_active(True)        
-        self.mainwindow.daq.put('DG')
-        self.mainwindow.process_incoming()
-        #for count in range(self.read_lines):
-        #    msg = self.mainwindow.inqueue.get(True)
-        #    self.gps_dump.append(msg)
-        #self.calculate()
-        #self.logger.info('GPS readout done.')
+        self.parent.process_incoming()
+        self.active(True)
+        self.daq_put('DG')
+        self.parent.process_incoming()
 
-    def on_save_clicked(self):
+    def _extract_gps_info(self, line, strip_string):
         """
-        Save the GPS data to an extra file
-        """
-        #self.outputfile = open(self.mainwindow.rawfilename,"w")
-        #self.file_label = QtGui.QLabel(tr('MainWindow','Writing to %s'%self.mainwindow.rawfilename))
-        #self.write_file = True
-        #self.mainwindow.raw_mes_start = datetime.datetime.now()
-        #self.mainwindow.statusbar.addPermanentWidget(self.file_label)
-        self.text_box.appendPlainText('save to clicked - function out of order')        
-        self.logger.info("Saving GPS informations still disabled.")
+        Extract GPS info from 'line' and strip away 'strip_string'.
 
-
-    def switch_active(self, switch = False):
+        :param line: line number of gps output
+        :type line: int
+        :param strip_string: string to strip away
+        :type strip_string: str
+        :returns: str
         """
-        Switch the GPS activation status.
-        """
-        if switch is None:
-            if self.active():
-                self.active(False)
-            else:
-                self.active(True)
-        else:
-            self.active(switch)
-        return self.active()
+        result = str(self.gps_dump[line]).strip()
+        return result.replace(strip_string, '')
     
-    def calculate(self):
+    def update(self):
         """
         Readout the GPS information and display it in the tab.
+
+        :returns: bool
         """
-        if len(self.gps_dump) < self.read_lines:
-            self.logger.warning('Error retrieving GPS information.')
+        if len(self.gps_dump) < self.GPS_DUMP_LENGTH:
+            self.logger.warning("Error retrieving GPS information.")
             return False
-        __satellites = 0
-        __status = False
-        __gps_time = ''
-        __latitude = ''
-        __longitude = ''
-        __altitude = ''
-        __posfix = 0
-        __chksum = False
+
+        gps_time = ''
+        pos_fix = 0
+        latitude = ''
+        longitude = ''
+        altitude = ''
+        satellites = 0
+        status = "Invalid"
+        checksum = "Error"
+
         self.refresh_button.setEnabled(True)
+
         try:
+            if self._extract_gps_info(3, "Status:") == "A (valid)":
+                status = "Valid"
+                gps_time = self._extract_gps_info(2, "Date+Time:")
+                pos_fix = int(self._extract_gps_info(4, "PosFix#:"))
+                latitude = self._extract_gps_info(5, "Latitude:")
+                longitude = self._extract_gps_info(6, "Longitude:")
+                altitude = self._extract_gps_info(7, "Altitude:")
+                satellites = int(self._extract_gps_info(8, "Stats used:"))
 
-            if str(self.gps_dump[3]).strip().replace('Status:','').strip() == 'A (valid)':
-                self.logger.info('Valid GPS signal: found %i ' %(__satellites))
-                __status = True
-                __satellites = int(str(self.gps_dump[8]).strip().replace('Sats used:', '').strip())
-                __posfix = int(str(self.gps_dump[4]).strip().replace('PosFix#:', '').strip())
-                __gps_time = str(self.gps_dump[2]).strip().replace('Date+Time:', '').strip()
-                if str(self.gps_dump[12]).strip().replace('ChkSumErr:', '').strip() == '0':
-                    __chksum = True
-                else:
-                    __chksum = False
- 
-                __altitude = str(self.gps_dump[7]).strip().replace('Altitude:', '').strip()
+                if self._extract_gps_info(12, "ChkSumErr:") == '0':
+                    checksum = "No Error"
 
-                __latitude = str(self.gps_dump[5]).strip().replace('Latitude:', '').strip()
-
-                __longitude = str(self.gps_dump[6]).strip().replace('Longitude:', '').strip()
-
+                self.logger.info('Valid GPS signal: found %d ' % satellites)
             else:
-                __status = False
                 self.logger.info('Invalid GPS signal.')
 
             self.gps_dump = []
-        except:
-            self.logger.warning('Error evaluating GPS information.')
+        except Exception:
+            self.logger.warn('Error evaluating GPS information.')
             self.gps_dump = []
-            self.switch_active(False)
+            self.active(False)
             return False
 
-        if __status:
-            __status = 'Valid'
-        else:
-            __status = 'Invalid'
-        if __chksum:
-            __chksum = 'No Error'
-        else:
-            __chksum = 'Error'
-                    
-        self.status_box.setText(str(__status))
-        self.time_box.setText(str(__gps_time))
-        self.satellites_box.setText(str(__satellites))
-        self.chksum_box.setText(str(__chksum))
-        self.latitude_box.setText(str(__latitude))
-        self.longitude_box.setText(str(__longitude))
-        self.altitude_box.setText(str(__altitude))
-        self.posfix_box.setText(str(__posfix))
+        self.gps_time_box.setText(gps_time)
+        self.pos_fix_box.setText(str(pos_fix))
+        self.latitude_box.setText(latitude)
+        self.longitude_box.setText(longitude)
+        self.altitude_box.setText(altitude)
+        self.satellites_box.setText(str(satellites))
+        self.status_box.setText(status)
+        self.checksum_box.setText(checksum)
 
-        self.text_box.appendPlainText('********************')
-        self.text_box.appendPlainText('STATUS     : %s' %(str(__status)))
-        self.text_box.appendPlainText('TIME          : %s' %(str(__gps_time)))
-        self.text_box.appendPlainText('Altitude     : %s' %(str(__altitude)))
-        self.text_box.appendPlainText('Latitude     : %s' %(str(__latitude)))
-        self.text_box.appendPlainText('Longitude  : %s' %(str(__longitude)))
-        self.text_box.appendPlainText('Satellites    : %s' %(str(__satellites)))
-        self.text_box.appendPlainText('Checksum   : %s' %(str(__chksum)))
-        self.text_box.appendPlainText('********************')
+        self.gps_status_log.appendPlainText('******************************')
+        self.gps_status_log.appendPlainText('STATUS     : %s' % status)
+        self.gps_status_log.appendPlainText('TIME       : %s' % gps_time)
+        self.gps_status_log.appendPlainText('Altitude   : %s' % altitude)
+        self.gps_status_log.appendPlainText('Latitude   : %s' % latitude)
+        self.gps_status_log.appendPlainText('Longitude  : %s' % longitude)
+        self.gps_status_log.appendPlainText('Satellites : %d' % satellites)
+        self.gps_status_log.appendPlainText('Checksum   : %s' % checksum)
+        self.gps_status_log.appendPlainText('******************************')
 
-        self.switch_active(False)
+        self.active(False)
         return True

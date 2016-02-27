@@ -21,17 +21,6 @@ class BaseDialog(QtGui.QDialog):
         self.setWindowTitle(window_title)
         self.setModal(True)
 
-    def set_layout_and_show(self, layout):
-        """
-        Sets the layout and shows the dialog.
-
-        :param layout: the layout to use
-        :type layout: QGui.QLayout
-        :return: None
-        """
-        self.setLayout(layout)
-        self.show()
-
     def get_widget_value(self, object_name):
         """
         Get the value of a widget by its object name.
@@ -135,7 +124,7 @@ class DecayConfigDialog(BaseDialog):
     def __init__(self):
         BaseDialog.__init__(self, "Muon Decay Configuration")
 
-        layout = QtGui.QGridLayout()
+        layout = QtGui.QGridLayout(self)
 
         layout.addWidget(self.choice_group(radio=True, label="Single Pulse",
                                            object_name="single_checkbox",
@@ -205,7 +194,7 @@ class DecayConfigDialog(BaseDialog):
         layout.addWidget(pulse_width_group_box, 3, 0, 1, 3)
         layout.addWidget(self.button_box(left=200), 4, 2)
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class FitRangeConfigDialog(BaseDialog):
@@ -223,7 +212,7 @@ class FitRangeConfigDialog(BaseDialog):
     def __init__(self, upper_lim=None, lower_lim=None, dimension=''):
         BaseDialog.__init__(self, "Fit Range Configuration")
 
-        layout = QtGui.QGridLayout()
+        layout = QtGui.QGridLayout(self)
 
         lower = QtGui.QDoubleSpinBox()
         lower.setDecimals(2)
@@ -254,7 +243,7 @@ class FitRangeConfigDialog(BaseDialog):
         layout.addWidget(upper, 1, 1)
         layout.addWidget(self.button_box(left=200), 2, 0, 2, 0)
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class VelocityConfigDialog(BaseDialog):
@@ -265,7 +254,7 @@ class VelocityConfigDialog(BaseDialog):
     def __init__(self):
         BaseDialog.__init__(self, "Muon Velocity Configuration")
 
-        layout = QtGui.QGridLayout()
+        layout = QtGui.QGridLayout(self)
         layout.addWidget(self.choice_group(radio=True, label="Upper Channel",
                                            object_name="upper_checkbox",
                                            checked_items=[0], left=20), 0, 0)
@@ -274,7 +263,7 @@ class VelocityConfigDialog(BaseDialog):
                                            checked_items=[1], left=180), 0, 1)
         layout.addWidget(self.button_box(left=200), 1, 1)
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class PeriodicCallDialog(BaseDialog):
@@ -290,7 +279,7 @@ class PeriodicCallDialog(BaseDialog):
     def __init__(self, command=None, interval=1):
         BaseDialog.__init__(self, "Periodic Call")
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtGui.QVBoxLayout(self)
 
         command_box = QtGui.QLineEdit()
         command_box.setObjectName("command")
@@ -311,7 +300,7 @@ class PeriodicCallDialog(BaseDialog):
 
         layout.addWidget(self.button_box(left=0))
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class ThresholdDialog(BaseDialog):
@@ -325,7 +314,7 @@ class ThresholdDialog(BaseDialog):
     def __init__(self, thresholds):
         BaseDialog.__init__(self, "Thresholds")
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtGui.QVBoxLayout(self)
 
         for channel, threshold in enumerate(thresholds):
             spinbox = QtGui.QSpinBox()
@@ -338,7 +327,7 @@ class ThresholdDialog(BaseDialog):
                         
         layout.addWidget(self.button_box(left=0))
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class ConfigDialog(BaseDialog):
@@ -380,7 +369,7 @@ class ConfigDialog(BaseDialog):
             if checked:
                 checked_channel_vetos.append(_veto)
 
-        layout = QtGui.QGridLayout()
+        layout = QtGui.QGridLayout(self)
         layout.addWidget(
                 self.choice_group(label="Select Channel",
                                   object_name="channel_checkbox",
@@ -402,7 +391,7 @@ class ConfigDialog(BaseDialog):
                                   left=180), 0, 2)
         layout.addWidget(self.button_box(left=30, top=300), 1, 2, 1, 2)
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class AdvancedDialog(BaseDialog):
@@ -420,7 +409,7 @@ class AdvancedDialog(BaseDialog):
     def __init__(self, gate_width=100, time_window=5.0, write_status=False):
         BaseDialog.__init__(self, "Advanced Configurations")
 
-        layout = QtGui.QGridLayout()
+        layout = QtGui.QGridLayout(self)
 
         gate_width_box = QtGui.QSpinBox()
         gate_width_box.setSuffix(' ns')
@@ -463,7 +452,7 @@ class AdvancedDialog(BaseDialog):
         layout.addWidget(write_status_checkbox, 2, 1)
         layout.addWidget(self.button_box(left=30, top=300), 3, 0, 1, 2)
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 
 class HelpDialog(BaseDialog):
@@ -487,11 +476,11 @@ class HelpDialog(BaseDialog):
         QtCore.QObject.connect(button_box, QtCore.SIGNAL('accepted()'),
                                self.accept)
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtGui.QVBoxLayout(self)
         layout.addWidget(text_box)
         layout.addWidget(button_box)
 
-        self.set_layout_and_show(layout)
+        self.show()
 
 if __name__ == "__main__":
     import sys

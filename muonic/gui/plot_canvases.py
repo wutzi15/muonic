@@ -215,6 +215,7 @@ class BaseHistogramCanvas(BasePlotCanvas):
         # clears a previous fit from the canvas
         self.ax.lines = []
         self.ax.plot(bin_centers, bincontent, "b^", fitx, decay(p, fitx), "b-")
+
         # FIXME: this seems to crop the histogram
         # self.ax.set_ylim(0,max(bincontent)*1.2)
         self.ax.set_xlabel(self.xlabel)
@@ -503,7 +504,7 @@ class PulseWidthCanvas(BaseHistogramCanvas):
                 hist_color=hist_color, xmin=0., xmax=100, ymin=0, ymax=2,
                 ylabel="Events", xlabel="Pulse Width (ns)")
         self.ax.set_title("Pulse widths")
-        
+
     def update_plot(self, data):
         BaseHistogramCanvas.update_plot(self, data)
         self.ax.set_title("Pulse widths")

@@ -20,7 +20,7 @@ from PyQt4 import QtCore
 
 from muonic import DATA_PATH
 from muonic.daq.provider import BaseDAQProvider
-from muonic.gui.line_edit import LineEdit
+from muonic.gui.helpers import HistoryAwareLineEdit
 from muonic.gui.plot_canvases import ScalarsCanvas, LifetimeCanvas
 from muonic.gui.plot_canvases import PulseCanvas, PulseWidthCanvas
 from muonic.gui.plot_canvases import VelocityCanvas
@@ -889,7 +889,6 @@ class StatusWidget(BaseWidget):
             measurements.append("Muon Rates")
         if self.parent.tab_widget.decaywidget.active():
             measurements.append("Muon Decay")
-            self.decay_veto.setText(self.muonic_stats['decay_veto'])
         if self.parent.tab_widget.velocitywidget.active():
             measurements.append("Muon Velocity")
         if self.parent.tab_widget.pulseanalyzerwidget.active():
@@ -1546,7 +1545,7 @@ class DAQWidget(BaseWidget):
 
         # input field and buttons
         self.label = QtGui.QLabel("Command")
-        self.hello_edit = LineEdit()
+        self.hello_edit = HistoryAwareLineEdit()
         self.file_button = QtGui.QPushButton("Save RAW-File")
         self.periodic_button = QtGui.QPushButton("Periodic Call")
 

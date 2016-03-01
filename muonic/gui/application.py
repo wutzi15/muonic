@@ -15,7 +15,7 @@ from muonic import __docs_hosted_at__, __manual_hosted_at__
 from muonic import DATA_PATH
 from muonic.analysis.analyzer import PulseExtractor
 from muonic.daq import DAQIOError
-from muonic.gui.styles import LargeScreenMPStyle
+from muonic.gui.helpers import set_large_plot_style
 from muonic.gui.dialogs import ThresholdDialog, ConfigDialog
 from muonic.gui.dialogs import HelpDialog, AdvancedDialog
 from muonic.gui.widgets import VelocityWidget, PulseAnalyzerWidget
@@ -254,7 +254,7 @@ class Application(QtGui.QMainWindow):
         # FIXME: make it configurable
         # now simply set to 1600 x 1200
         if screen_x * screen_y >= 1920000:
-            LargeScreenMPStyle()
+            set_large_plot_style()
 
     def setup_menus(self):
         # create the menubar

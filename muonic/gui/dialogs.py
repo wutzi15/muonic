@@ -402,11 +402,12 @@ class AdvancedDialog(BaseDialog):
     :type gate_width: float
     :param time_window: the readout interval
     :type time_window: float
-    :param write_status: write status to raw file
-    :type write_status: bool
+    :param write_daq_status: write DAQ status to raw file
+    :type write_daq_status: bool
     """
     
-    def __init__(self, gate_width=100, time_window=5.0, write_status=False):
+    def __init__(self, gate_width=100, time_window=5.0,
+                 write_daq_status=False):
         BaseDialog.__init__(self, "Advanced Configurations")
 
         layout = QtGui.QGridLayout(self)
@@ -418,10 +419,10 @@ class AdvancedDialog(BaseDialog):
         gate_width_box.setSingleStep(10)
         gate_width_box.setMinimum(10)
         gate_width_box.setValue(gate_width)
-        gate_width_box.setToolTip("Define a gatewidth, which is the " +
-                                  "timewindow opend by a trigger")
+        gate_width_box.setToolTip("Define a gate width, which is the " +
+                                  "time window opened by a trigger")
 
-        layout.addWidget(QtGui.QLabel("Gatewidth Timewindow " +
+        layout.addWidget(QtGui.QLabel("Gate width time window " +
                                       "(default: 100 ns): "), 0, 0)
         layout.addWidget(gate_width_box, 0, 1)
 
@@ -441,11 +442,10 @@ class AdvancedDialog(BaseDialog):
         layout.addWidget(time_window_box, 1, 1)
 
         write_status_checkbox = QtGui.QCheckBox()
-        write_status_checkbox.setObjectName("write_status")
-        write_status_checkbox.setChecked(write_status)
+        write_status_checkbox.setObjectName("write_daq_status")
+        write_status_checkbox.setChecked(write_daq_status)
         write_status_checkbox.setToolTip("Write DAQ status lines to RAW " +
                                          "file, same as option -n.")
-        write_status_checkbox.setChecked(True)
 
         layout.addWidget(QtGui.QLabel("Write DAQ status lines to RAW file: "),
                          2, 0)

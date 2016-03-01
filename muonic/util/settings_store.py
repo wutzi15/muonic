@@ -3,18 +3,17 @@ Global application settings store
 """
 
 __all__ = ["update_setting", "have_setting", "get_setting",
-           "remove_setting", "update_settings"]
+           "remove_setting", "update_settings", "apply_default_settings"]
 
 _default_settings = {
     "write_pulses": False,
     "write_daq_status": False,
     "time_window": 5.0,
-    "coincidence_time": 0.0,
+    "gate_width": 0.0,
     "veto": False,
     "veto_ch0": False,
     "veto_ch1": False,
     "veto_ch2": False,
-    "veto_ch3": False,
     "active_ch0": True,
     "active_ch1": True,
     "active_ch2": True,

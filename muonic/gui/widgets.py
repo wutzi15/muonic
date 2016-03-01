@@ -1,9 +1,8 @@
 """
 Provide the different physics widgets
 """
+from __future__ import print_function
 import datetime
-import os
-import shutil
 import time
 
 try:
@@ -18,7 +17,6 @@ import numpy as np
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 
-from muonic import DATA_PATH
 from muonic.daq.provider import BaseDAQProvider
 from muonic.gui.helpers import HistoryAwareLineEdit
 from muonic.gui.plot_canvases import ScalarsCanvas, LifetimeCanvas
@@ -26,12 +24,10 @@ from muonic.gui.plot_canvases import PulseCanvas, PulseWidthCanvas
 from muonic.gui.plot_canvases import VelocityCanvas
 from muonic.gui.dialogs import DecayConfigDialog, PeriodicCallDialog
 from muonic.gui.dialogs import VelocityConfigDialog, FitRangeConfigDialog
-from muonic.analysis.fit import main as fit
-from muonic.analysis.fit import gaussian_fit
-from muonic.analysis.analyzer import VelocityTrigger, DecayTriggerThorough
-
-
-tr = QtCore.QCoreApplication.translate
+from muonic.analysis import fit, gaussian_fit
+from muonic.analysis import VelocityTrigger, DecayTriggerThorough
+from muonic.util import rename_muonic_file, get_hours_from_duration
+from muonic.util import get_setting, WrappedFile
 
 
 class BaseWidget(QtGui.QWidget):
@@ -117,14 +113,14 @@ class BaseWidget(QtGui.QWidget):
             return True
         return False
 
-    def daq_get_last(self):
+    def daq_get_last_msg(self):
         """
         Get the last DAQ message received by the parent, if present.
 
         :returns: str or None
         """
-        if self.parent is not None and self.parent.daq_msg is not None:
-            return self.parent.daq_msg
+        if self.parent is not None and self.parent.last_daq_msg is not None:
+            return self.parent.last_daq_msg
         return None
 
     def finish(self):
@@ -143,17 +139,18 @@ class RateWidget(BaseWidget):
 
     :param logger: logger object
     :type logger: logging.Logger
+    :param filename: filename for the rate data file
+    :type filename: str
     :param parent: parent widget
     """
     SCALAR_BUF_SIZE = 5
 
-    def __init__(self, logger, parent=None):
+    def __init__(self, logger, filename, parent=None):
         BaseWidget.__init__(self, logger, parent)
 
-        # FIXME: both needed?
-        # FIXME: calculate total run time in this widget, don't do that in main
-        self.measurement_start = datetime.datetime.now()
-        self.now = datetime.datetime.now()
+        # measurement start and duration
+        self.measurement_duration = datetime.timedelta()
+        self.start_time = datetime.datetime.now()
 
         # define the begin of the time interval for the rate calculation
         self.last_query_time = 0
@@ -175,7 +172,7 @@ class RateWidget(BaseWidget):
         self.first_cycle = False
 
         # data file options
-        self.data_file = None
+        self.data_file = WrappedFile(filename)
         self.setup_data_file()
 
         # rates store
@@ -285,7 +282,7 @@ class RateWidget(BaseWidget):
         :return: None
         """
         # FIXME: take filename as argument in __init__
-        with open(self.parent.filename, 'w') as f:
+        with self.data_file.open("w") as f:
             f.write("chan0 | chan1 | chan2 | chan3 | " +
                     "R0 | R1 | R2 | R3 | trigger | Delta_time\n")
 
@@ -325,7 +322,7 @@ class RateWidget(BaseWidget):
 
         :returns: bool
         """
-        msg = self.daq_get_last()
+        msg = self.daq_get_last_msg()
 
         if not (len(msg) >= 2 and msg.startswith("DS")):
             return False
@@ -387,11 +384,10 @@ class RateWidget(BaseWidget):
                          self.rates[0], self.rates[1], self.rates[2],
                          self.rates[3], self.rates[4], self.rates[5]))
                 self.logger.debug("Rate plot data was written to %s" %
-                                  self.data_file.__repr__())
+                                  repr(self.data_file))
             except ValueError:
                 self.logger.warning("ValueError, Rate plot data was not " +
-                                    "written to %s" %
-                                    self.data_file.__repr__())
+                                    "written to %s" % repr(self.data_file))
         return True
 
     def update(self):
@@ -411,18 +407,14 @@ class RateWidget(BaseWidget):
         self.update_info_field("daq_time", "%.2f s" % self.time_window)
         self.update_info_field("max_rate", "%.2f 1/s" % self.max_rate)
 
-        # FIXME: use global settings instead of
-        # FIXME: 'self.parent.channelcheckbox_0' etc...
-        self.update_fields(0, self.parent.channelcheckbox_0)
-        self.update_fields(1, self.parent.channelcheckbox_1)
-        self.update_fields(2, self.parent.channelcheckbox_2)
-        self.update_fields(3, self.parent.channelcheckbox_3)
+        for i in range(4):
+            self.update_fields(i, get_setting("active_ch%d" % i))
         self.update_fields(4, self.show_trigger)
 
-        self.scalars_monitor.update_plot(
-                self.rates, self.show_trigger,
-                [self.parent.channelcheckbox_0, self.parent.channelcheckbox_1,
-                 self.parent.channelcheckbox_2, self.parent.channelcheckbox_3])
+        channel_config = [get_setting("active_ch%d" % i) for i in range(4)]
+
+        self.scalars_monitor.update_plot(self.rates, self.show_trigger,
+                                         channel_config)
 
     def update_fields(self, channel, enabled, disable_only=False):
         """
@@ -481,6 +473,8 @@ class RateWidget(BaseWidget):
 
         self.active(True)
 
+        self.start_time = datetime.datetime.now()
+
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
         self.table.setEnabled(True)
@@ -493,27 +487,25 @@ class RateWidget(BaseWidget):
         # reset scalar buffer
         self.scalar_buffer = self.new_scalar_buffer()
 
-        # new measurement time
-        self.now = datetime.datetime.now()
-
-        # FIXME: This does not belong here, place in corresponding widgets
-        #if self.mainwindow.tab_widget.decaywidget.active:
-        #    comment_file = '# new decay measurement run from: %i-%i-%i %i-%i-%i\n'\
-        #                   %(date.tm_year,date.tm_mon,date.tm_mday,date.tm_hour,date.tm_min,date.tm_sec)
-        #if self.mainwindow.tab_widget.velocitywidget.active:
-        #    comment_file = '# new velocity measurement run from: %i-%i-%i %i-%i-%i\n'\
-        #                   %(date.tm_year,date.tm_mon,date.tm_mday,date.tm_hour,date.tm_min,date.tm_sec)
+        # determine type of measurement
+        if self.parent.is_widget_active("decay"):
+            measurement_type = "rate+decay"
+        elif self.parent.is_widget_active("velocity"):
+            measurement_type = "rate+velocity"
+        else:
+            measurement_type = "rate"
 
         # open file for writing and add comment
-        self.data_file = open(self.parent.filename, 'a')
-        self.data_file.write("# new rate measurement run from: %s\n" %
-                             self.now.strftime("%Y-%m-%d_%H-%M-%S"))
+        self.data_file.open("a")
+        self.data_file.write("# new %s measurement run from: %s\n" %
+                             (measurement_type,
+                              self.start_time.strftime("%Y-%m-%d_%H-%M-%S")))
 
         # update table fields
-        self.update_fields(0, self.parent.channelcheckbox_0, disable_only=True)
-        self.update_fields(1, self.parent.channelcheckbox_1, disable_only=True)
-        self.update_fields(2, self.parent.channelcheckbox_2, disable_only=True)
-        self.update_fields(3, self.parent.channelcheckbox_3, disable_only=True)
+        for i in range(4):
+            self.update_fields(i, get_setting("active_ch%d" % i),
+                               disable_only=True)
+
         self.update_fields(4, self.show_trigger, disable_only=True)
 
         # update info fields
@@ -522,7 +514,7 @@ class RateWidget(BaseWidget):
         self.update_info_field("max_rate", enable=True)
 
         self.update_info_field("start_date",
-                               self.now.strftime("%d.%m.%Y %H:%M:%S"))
+                               self.start_time.strftime("%d.%m.%Y %H:%M:%S"))
         self.update_info_field("daq_time", "%.2f" % self.time_window)
         self.update_info_field("max_rate", "%.2f" % self.max_rate)
 
@@ -540,6 +532,10 @@ class RateWidget(BaseWidget):
 
         self.active(False)
 
+        stop_time = datetime.datetime.now()
+
+        self.measurement_duration += stop_time - self.start_time
+
         self.start_button.setEnabled(True)
         self.stop_button.setEnabled(False)
         self.table.setEnabled(False)
@@ -548,11 +544,32 @@ class RateWidget(BaseWidget):
         self.update_info_field("daq_time", enable=False)
         self.update_info_field("max_rate", enable=False)
 
-        if self.data_file and not self.data_file.closed:
-            date = datetime.datetime.now()
-            self.data_file.write("# stopped run on: %s\n" \
-                                 % date.strftime("%Y-%m-%d_%H-%M-%S"))
+        self.data_file.write("# stopped run on: %s\n" %
+                             stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
+        self.data_file.close()
+
+    def finish(self):
+        """
+        Cleanup, close and rename data file
+
+        :returns: None
+        """
+        if self.active():
+            stop_time = datetime.datetime.now()
+
+            self.measurement_duration += stop_time - self.start_time
+
+            self.data_file.write("# stopped run on: %s\n" %
+                                 stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
             self.data_file.close()
+
+        self.logger.info("The rate measurement was active for %f hours" %
+                         get_hours_from_duration(self.measurement_duration))
+        try:
+            rename_muonic_file(self.measurement_duration,
+                               self.data_file.get_filename())
+        except (OSError, IOError):
+            pass
 
 
 class PulseAnalyzerWidget(BaseWidget):
@@ -561,14 +578,16 @@ class PulseAnalyzerWidget(BaseWidget):
 
     :param logger: logger object
     :type logger: logging.Logger
+    :param pulse_extractor: pulse extractor object
+    :type pulse_extractor: muonic.analysis.analyzer.PulseExtractor
     :param parent: parent widget
     """
-    def __init__(self, logger, parent=None):
+    def __init__(self, logger, pulse_extractor, parent=None):
         BaseWidget.__init__(self, logger, parent)
 
         self.pulses = None
         self.pulse_widths = []
-        self.pulse_file = self.parent.pulseextractor.pulse_file
+        self.pulse_extractor = pulse_extractor
 
         # setup layout
         layout = QtGui.QGridLayout(self)
@@ -593,16 +612,18 @@ class PulseAnalyzerWidget(BaseWidget):
         layout.addWidget(self.pulse_width_canvas, 1, 1)
         layout.addWidget(pulse_width_toolbar, 2, 1)
 
-    def calculate(self):
+    def calculate(self, pulses):
         """
         Calculates the pulse widths.
 
+        :param pulses: extracted pulses
+        :type pulses: list
         :returns: None
         """
         if not self.active():
             return
 
-        self.pulses = self.parent.pulses
+        self.pulses = pulses
 
         if self.pulses is None:
             self.logger.debug("Not received any pulses")
@@ -655,25 +676,12 @@ class PulseAnalyzerWidget(BaseWidget):
             return
 
         self.logger.debug("switching on pulse analyzer.")
-        self.pulse_file = self.parent.pulseextractor.pulse_file
         self.active(True)
 
         self.daq_put("CE")
-        self.daq_put('CE')
 
-        # FIXME: do not do this here, just add a trigger method to pulse
-        # FIXME: extractor to enable or disable writing to file
-        if not self.pulse_file:
-            self.parent.pulsefilename = os.path.join(
-                    DATA_PATH, "%s_%s_HOURS_%s" % (
-                        self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
-                        self.parent.opts.user))
-            self.parent.pulse_mes_start = self.parent.now
-            self.parent.pulseextractor.pulse_file = open(
-                    self.parent.pulsefilename, 'w')
-            self.logger.debug("Starting to write pulses to %s" %
-                              self.parent.pulsefilename)
-            self.parent.writepulses = True
+        # extract pulses to file
+        self.pulse_extractor.write_pulses(True)
 
     def stop(self):
         """
@@ -687,15 +695,12 @@ class PulseAnalyzerWidget(BaseWidget):
         self.logger.debug("switching off pulse analyzer.")
         self.active(False)
 
-        # FIXME: do not do this here, just add a trigger method to pulse
-        # FIXME: extractor to enable or disable writing to file
-        if not self.pulse_file:
-            self.parent.pulsefilename = ''
-            self.parent.pulse_mes_start = False
-
-            if self.parent.pulseextractor.pulse_file:
-                self.parent.pulseextractor.pulse_file.close()
-            self.parent.pulseextractor.pulse_file = False
+        # stop extracting pulses to file if decay and velocity
+        # measurements are inactive and global setting is also false
+        if (not get_setting("write_pulses") and
+                not self.parent.is_widget_active("decay") and
+                not self.parent.is_widget_active("velocity")):
+            self.pulse_extractor.write_pulses(False)
 
 
 class StatusWidget(BaseWidget):
@@ -840,42 +845,40 @@ class StatusWidget(BaseWidget):
 
         :returns: None
         """
-        self.daq_stats['active_channels'][0] = self.parent.channelcheckbox_0
-        self.daq_stats['active_channels'][1] = self.parent.channelcheckbox_1
-        self.daq_stats['active_channels'][2] = self.parent.channelcheckbox_2
-        self.daq_stats['active_channels'][3] = self.parent.channelcheckbox_3
+        for i in range(4):
+            self.daq_stats['active_channels'][i] = \
+                get_setting("active_ch%d" % i)
+            self.daq_stats['thresholds'][1] = \
+                ("%d mV" % get_setting("threshold_ch%d" % i))
 
-        self.daq_stats['thresholds'][0] = ("%d mV" %
-                                           self.parent.threshold_ch0)
-        self.daq_stats['thresholds'][1] = ("%d mV" %
-                                           self.parent.threshold_ch1)
-        self.daq_stats['thresholds'][2] = ("%d mV" %
-                                           self.parent.threshold_ch2)
-        self.daq_stats['thresholds'][3] = ("%d mV" %
-                                           self.parent.threshold_ch3)
-
-        if not self.parent.vetocheckbox:
-            self.daq_stats['veto'] = 'no veto set'
-        else:
-            if self.parent.vetocheckbox_0:
+        if get_setting("veto"):
+            if get_setting("veto_ch0"):
                 self.daq_stats['veto'] = 'veto with channel 0'
-            if self.parent.vetocheckbox_1:
+            if get_setting("veto_ch1"):
                 self.daq_stats['veto'] = 'veto with channel 1'
-            if self.parent.vetocheckbox_2:
+            if get_setting("veto_ch2"):
                 self.daq_stats['veto'] = 'veto with channel 2'
+        else:
+            self.daq_stats['veto'] = 'no veto set'
 
-        if self.parent.tab_widget.decaywidget.active():
+        if self.parent.is_widget_active("decay"):
             self.daq_stats['decay_veto'] = \
                 "software veto with channel %d" % (
-                    self.parent.tab_widget.decaywidget.veto_pulse_channel - 1)
+                    self.parent.get_widget("decay").veto_pulse_channel - 1)
+        else:
+            self.daq_stats['decay_veto'] = ("not set yet - start Muon " +
+                                            "Decay Measurement.")
 
-        if self.parent.coincidencecheckbox_0:
+        self.daq_stats['coincidence_time'] = ("%d ns" %
+                                              get_setting("gate_width"))
+
+        if get_setting("coincidence0"):
             self.daq_stats['coincidences'] = "Single Coincidence"
-        elif self.parent.coincidencecheckbox_1:
+        elif get_setting("coincidence1"):
             self.daq_stats['coincidences'] = "Twofold Coincidence"
-        elif self.parent.coincidencecheckbox_2:
+        elif get_setting("coincidence2"):
             self.daq_stats['coincidences'] = "Threefold Coincidence"
-        elif self.parent.coincidencecheckbox_3:
+        elif get_setting("coincidence3"):
             self.daq_stats['coincidences'] = "Fourfold Coincidence"
 
     def _update_muonic_stats(self):
@@ -885,25 +888,22 @@ class StatusWidget(BaseWidget):
         :returns: None
         """
         measurements = []
-        if self.parent.tab_widget.ratewidget.active():
+        if self.parent.is_widget_active("rate"):
             measurements.append("Muon Rates")
-        if self.parent.tab_widget.decaywidget.active():
+        if self.parent.is_widget_active("decay"):
             measurements.append("Muon Decay")
-        if self.parent.tab_widget.velocitywidget.active():
+        if self.parent.is_widget_active("velocity"):
             measurements.append("Muon Velocity")
-        if self.parent.tab_widget.pulseanalyzerwidget.active():
+        if self.parent.is_widget_active("pulse"):
             measurements.append("Pulse Analyzer")
 
         self.muonic_stats['measurements'] = ", ".join(measurements)
-        self.muonic_stats['refresh_time'] = str(self.parent.timewindow) + " s"
+        self.muonic_stats['refresh_time'] = ("%f s" %
+                                             get_setting("time_window"))
 
-        open_files = [str(self.parent.filename)]
-        if self.parent.tab_widget.daqwidget.write_raw_file:
-            open_files.append(self.parent.rawfilename)
-        if self.parent.tab_widget.decaywidget.active():
-            open_files.append(self.parent.decayfilename)
-        if self.parent.writepulses:
-            open_files.append(self.parent.pulsefilename)
+        # since we use WrappedFile for opening file, we can
+        # easily track the open files
+        open_files = WrappedFile.get_open_files()
 
         self.muonic_stats['open_files'] = "\n".join(open_files)
 
@@ -955,10 +955,14 @@ class VelocityWidget(BaseWidget):
 
     :param logger: logger object
     :type logger: logging.Logger
+    :param pulse_extractor: pulse extractor object
+    :type pulse_extractor: muonic.analysis.analyzer.PulseExtractor
     :param parent: parent widget
     """
-    def __init__(self, logger, parent=None):
+    def __init__(self, logger, pulse_extractor, parent=None):
         BaseWidget.__init__(self, logger, parent)
+
+        self.pulse_extractor = pulse_extractor
 
         self.upper_channel = 0
         self.lower_channel = 1
@@ -968,9 +972,6 @@ class VelocityWidget(BaseWidget):
 
         # default fit range
         self.fit_range = (self.binning[0], self.binning[1])
-
-        # FIXME: not needed here
-        self.pulse_file = self.parent.pulseextractor.pulse_file
 
         self.event_data = []
         self.last_event_time = None
@@ -1065,14 +1066,14 @@ class VelocityWidget(BaseWidget):
         else:
             self.stop()
 
-    def calculate(self):
+    def calculate(self, pulses):
         """
         Trigger muon flight
 
+        :param pulses: extracted pulses
+        :type pulses: list
         :returns: None
         """
-        pulses = self.parent.pulses
-
         if pulses is None:
             return
 
@@ -1135,33 +1136,24 @@ class VelocityWidget(BaseWidget):
                     self.lower_channel = chan + 1  # chan index is shifted
 
             self.logger.info("Switching off decay measurement if running!")
-            if self.parent.tab_widget.decaywidget.active():
-                self.parent.tab_widget.decaywidget.stop()
+            if self.parent.is_widget_active("decay"):
+                self.parent.get_widget("decay").stop()
 
             self.running_status = QtGui.QLabel("Muon velocity " +
                                                "measurement active!")
-            self.parent.statusbar.addPermanentWidget(self.running_status)
+            self.parent.status_bar.addPermanentWidget(self.running_status)
+
+            self.active(True)
+
+            # restart rate measurement
+            self.parent.get_widget("rate").stop()
+            self.parent.get_widget("rate").start()
 
             # enable counter
             self.daq_put("CE")
 
-            self.active(True)
-
-            self.parent.tab_widget.ratewidget.start()
-
-            # FIXME: this has nothing to do here!
-            if not self.pulse_file:
-                self.parent.pulsefilename = os.path.join(
-                        DATA_PATH, "%s_%s_HOURS_%s" % (
-                            self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
-                            self.parent.opts.user))
-
-                self.parent.pulse_mes_start = self.parent.now
-                self.parent.pulseextractor.pulse_file = open(
-                        self.parent.pulsefilename, 'w')
-                self.logger.debug("Starting to write pulses to %s" %
-                                  self.parent.pulsefilename)
-                self.parent.writepulses = True
+            # write pulses to file
+            self.pulse_extractor.write_pulses(True)
         else:
             self.logger.info("Moun velocity config canceled")
             self.active(False)
@@ -1177,19 +1169,18 @@ class VelocityWidget(BaseWidget):
         if not self.active():
             return
 
-        # FIXME: this has nothing to do here!
-        if not self.pulse_file:
-            self.parent.pulsefilename = ''
-            self.parent.pulse_mes_start = False
-            if self.parent.pulseextractor.pulse_file:
-                self.parent.pulseextractor.pulse_file.close()
-            self.parent.pulseextractor.pulse_file = False
+        # stop extracting pulses to file if pulse analyzer and decay
+        # measurements are inactive and global setting is also false
+        if (not get_setting("write_pulses") and
+                not self.parent.is_widget_active("pulse") and
+                not self.parent.is_widget_active("decay")):
+            self.pulse_extractor.write_pulses(False)
 
         self.active(False)
         self.checkbox.setChecked(False)
         self.active_since_label.setText("")
-        self.parent.statusbar.removeWidget(self.running_status)
-        self.parent.tab_widget.ratewidget.stop()
+        self.parent.status_bar.removeWidget(self.running_status)
+        self.parent.get_widget("rate").stop()
 
 
 class DecayWidget(BaseWidget):
@@ -1198,10 +1189,16 @@ class DecayWidget(BaseWidget):
 
     :param logger: logger object
     :type logger: logging.Logger
+    :param filename: filename for the rate data file
+    :type filename: str
+    :param pulse_extractor: pulse extractor object
+    :type pulse_extractor: muonic.analysis.analyzer.PulseExtractor
     :param parent: parent widget
     """
-    def __init__(self, logger, parent=None):
+    def __init__(self, logger, filename, pulse_extractor, parent=None):
         BaseWidget.__init__(self, logger, parent)
+
+        self.pulse_extractor = pulse_extractor
 
         # default decay configuration
         self.min_single_pulse_width = 0
@@ -1221,15 +1218,15 @@ class DecayWidget(BaseWidget):
         # default fit range
         self.fit_range = (1.5, 10.)
 
-        # FIXME: not needed here
-        self.pulse_file = self.parent.pulseextractor.pulse_file
-
         self.event_data = []
         self.last_event_time = None
         self.active_since = None
 
-        self.mu_file = None
-        self.measurement_start = None
+        self.mu_file = WrappedFile(filename)
+
+        # measurement duration and start time
+        self.measurement_duration = datetime.timedelta()
+        self.start_time = datetime.datetime.now()
 
         self.previous_coinc_time_03 = "00"
         self.previous_coinc_time_02 = "0A"
@@ -1281,7 +1278,20 @@ class DecayWidget(BaseWidget):
         layout.addWidget(navigation_toolbar, 5, 0)
         layout.addWidget(self.fit_range_button, 5, 1)
         layout.addWidget(self.fit_button, 5, 2)
-      
+
+    def set_previous_coincidence_times(self, time_03, time_02):
+        """
+        Sets the previous coincidence times obtained from the DAQ card
+
+        :param time_03: time 03
+        :type time_03: str
+        :param time_02: time 03
+        :type time_02: str
+        :return:
+        """
+        self.previous_coinc_time_03 = time_03
+        self.previous_coinc_time_02 = time_02
+
     def on_fit_clicked(self):
         """
         Fit the muon decay histogram
@@ -1321,13 +1331,14 @@ class DecayWidget(BaseWidget):
         else:
             self.stop()
 
-    def calculate(self):
+    def calculate(self, pulses):
         """
         Trigger muon decay
 
+        :param pulses: extracted pulses
+        :type pulses: list
         :returns: None
         """
-        pulses = self.parent.pulses
         decay = self.trigger.trigger(
                 pulses, single_channel=self.single_pulse_channel,
                 double_channel=self.double_pulse_channel,
@@ -1421,8 +1432,8 @@ class DecayWidget(BaseWidget):
 
             self.logger.info("Switching off velocity measurement if running!")
 
-            if self.parent.tab_widget.velocitywidget.active():
-                self.parent.tab_widget.velocitywidget.stop()
+            if self.parent.is_widget_active("decay"):
+                self.parent.get_widget("velocity").stop()
 
             self.logger.warn("We now activate the muon decay mode!\n" +
                              "All other Coincidence/Veto settings will " +
@@ -1438,7 +1449,7 @@ class DecayWidget(BaseWidget):
 
             self.running_status = QtGui.QLabel("Muon Decay " +
                                                "measurement active!")
-            self.parent.statusbar.addPermanentWidget(self.running_status)
+            self.parent.status_bar.addPermanentWidget(self.running_status)
 
             # configure DAQ card with coincidence/veto settings
             self.daq_put("DC")
@@ -1451,27 +1462,19 @@ class DecayWidget(BaseWidget):
             # so we take all pulses
             self.daq_put("WC 00 0F")
 
-            self.mu_file = open(self.parent.decayfilename, 'w')
-            self.measurement_start = datetime.datetime.now()
+            self.start_time = datetime.datetime.now()
+            self.mu_file.open("a")
+            self.mu_file.write("# new decay measurement run from: %s\n" %
+                               self.start_time.strftime("%Y-%m-%d_%H-%M-%S"))
+
             self.active(True)
 
-            # FIXME: is this intentional?
-            self.parent.tab_widget.ratewidget.start()
-            self.pulse_file = self.parent.pulseextractor.pulse_file
+            # restart rate measurement
+            self.parent.get_widget("rate").stop()
+            self.parent.get_widget("rate").start()
 
-            # FIXME: this has nothing to do here!
-            if not self.pulse_file:
-                self.parent.pulsefilename = os.path.join(
-                        DATA_PATH, "%s_%s_HOURS_%s" % (
-                            self.parent.now.strftime('%Y-%m-%d_%H-%M-%S'), "P",
-                            self.parent.opts.user))
-
-                self.parent.pulse_mes_start = self.parent.now
-                self.parent.pulseextractor.pulse_file = open(
-                        self.parent.pulsefilename, 'w')
-                self.logger.debug("Starting to write pulses to %s" %
-                                  self.parent.pulsefilename)
-                self.parent.writepulses = True
+            # write pulses to file
+            self.pulse_extractor.write_pulses(True)
         else:
             self.logger.info("Moun decay config canceled")
             self.active(False)
@@ -1487,7 +1490,8 @@ class DecayWidget(BaseWidget):
         if not self.active():
             return
 
-        now = datetime.datetime.now()
+        stop_time = datetime.datetime.now()
+        self.measurement_duration += stop_time - self.start_time
 
         # reset coincidence times
         self.daq_put("WC 03 " + self.previous_coinc_time_03)
@@ -1496,19 +1500,48 @@ class DecayWidget(BaseWidget):
         self.logger.info("Muon decay mode now deactivated, returning to " +
                          "previous setting (if available)")
 
-        mtime = now - self.measurement_start
-        mtime = round(mtime.seconds / 3600., 2) + mtime.days * 86400
-        self.logger.info("The muon decay measurement was " +
-                         "active for %f hours" % mtime)
+        self.mu_file.write("# stopped run on: %s\n" %
+                           stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
+        self.mu_file.close()
 
-        newmufilename = self.parent.decayfilename.replace("HOURS", str(mtime))
-        shutil.move(self.parent.decayfilename, newmufilename)
+        # stop extracting pulses to file if pulse analyzer and velocity
+        # measurements are inactive and global setting is also false
+        if (not get_setting("write_pulses") and
+                not self.parent.is_widget_active("pulse") and
+                not self.parent.is_widget_active("velocity")):
+            self.pulse_extractor.write_pulses(False)
 
         self.active(False)
         self.checkbox.setChecked(False)
         self.active_since_label.setText("")
-        self.parent.statusbar.removeWidget(self.running_status)
-        self.parent.tab_widget.ratewidget.stop()
+        self.parent.status_bar.removeWidget(self.running_status)
+        self.parent.get_widget("rate").stop()
+
+    def finish(self):
+        """
+        Cleanup, close and rename decay file
+
+        :returns: None
+        """
+        if not self.mu_file.closed:
+            stop_time = datetime.datetime.now()
+
+            # add duration
+            self.measurement_duration += stop_time - self.start_time
+
+            self.mu_file.write("# stopped run on: %s\n" %
+                               stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
+            self.mu_file.close()
+
+        self.logger.info("The muon decay measurement was " +
+                         "active for %f hours" %
+                         get_hours_from_duration(self.measurement_duration))
+
+        try:
+            rename_muonic_file(self.measurement_duration,
+                               self.mu_file.get_filename())
+        except (OSError, IOError):
+            pass
 
 
 class DAQWidget(BaseWidget):
@@ -1519,15 +1552,21 @@ class DAQWidget(BaseWidget):
 
     :param logger: logger object
     :type logger: logging.Logger
+    :param filename: filename for the rate data file
+    :type filename: str
     :param parent: parent widget
     """
-    def __init__(self, logger, parent=None):
+    def __init__(self, logger, filename, parent=None):
         BaseWidget.__init__(self, logger, parent)
 
         # raw output file
-        self.output_file = None
+        self.output_file = WrappedFile(filename)
         self.write_raw_file = False
         self.write_status = None
+
+        # measurement start and duration
+        self.measurement_duration = datetime.timedelta()
+        self.start_time = datetime.datetime.now()
 
         # periodic call
         self.interval = 1
@@ -1589,31 +1628,34 @@ class DAQWidget(BaseWidget):
 
         :returns: None
         """
-        if self.write_raw_file:
-            self.write_raw_file = False
-            self.file_button.setText("Save RAW-File")
+        if self.output_file.closed:
             try:
-                self.output_file.close()
-            except IOError as e:
-                self.logger.error("unable to close file '%s': %s" %
-                                  (self.parent.rawfilename, str(e)))
-            self.parent.statusbar.removeWidget(self.write_status)
-        else:
-            try:
-                self.write_raw_file = True
                 self.file_button.setText("Stop saving RAW-File")
-                self.parent.daq.put("CE")
+                self.daq_put("CE")
 
-                # FIXME: rawfilename and raw_mes_start belong to this widget
-                self.output_file = open(self.parent.rawfilename, "w")
-                self.parent.raw_mes_start = datetime.datetime.now()
+                self.start_time = datetime.datetime.now()
+                self.output_file.open("a")
+                self.output_file.write(
+                        "# raw data run from: %s\n" %
+                        self.start_time.strftime("%Y-%m-%d_%H-%M-%S"))
 
                 self.write_status = QtGui.QLabel("Writing to %s" %
-                                                 self.parent.rawfilename)
-                self.parent.statusbar.addPermanentWidget(self.write_status)
+                                                 repr(self.output_file))
+                self.parent.status_bar.addPermanentWidget(self.write_status)
             except IOError as e:
                 self.logger.error("unable to open file '%s': %s" %
-                                  (self.parent.rawfilename, str(e)))
+                                  (repr(self.output_file), str(e)))
+        else:
+            self.file_button.setText("Save RAW-File")
+
+            stop_time = datetime.datetime.now()
+            # add duration
+            self.measurement_duration += stop_time - self.start_time
+
+            self.output_file.write("# stopped run on: %s\n" %
+                                   stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
+            self.output_file.close()
+            self.parent.status_bar.removeWidget(self.write_status)
 
     def on_periodic_clicked(self):
         """
@@ -1636,12 +1678,12 @@ class DAQWidget(BaseWidget):
             # stop timer and clear status if already running
             if self.periodic_call_timer.isActive():
                 self.periodic_call_timer.stop()
-                self.parent.statusbar.removeWidget(self.periodic_status)
+                self.parent.status_bar.removeWidget(self.periodic_status)
 
             self.periodic_call_timer.start(self.interval * 1000)
             self.periodic_status = QtGui.QLabel(
                     '%s every %s sec' % (self.command, self.interval))
-            self.parent.statusbar.addPermanentWidget(
+            self.parent.status_bar.addPermanentWidget(
                     self.periodic_status)
 
             # execute commands now
@@ -1649,7 +1691,7 @@ class DAQWidget(BaseWidget):
         else:
             try:
                 self.periodic_call_timer.stop()
-                self.parent.statusbar.removeWidget(self.periodic_status)
+                self.parent.status_bar.removeWidget(self.periodic_status)
             except AttributeError:
                 pass
 
@@ -1668,10 +1710,10 @@ class DAQWidget(BaseWidget):
 
         :returns: None
         """
-        msg = self.daq_get_last()
+        msg = self.daq_get_last_msg()
         self.daq_msg_log.appendPlainText(msg)
 
-        if self.write_raw_file:
+        if not self.output_file.closed:
             self._write_to_file(msg)
 
     def _write_to_file(self, msg):
@@ -1682,28 +1724,42 @@ class DAQWidget(BaseWidget):
         :type msg: str
         :returns: None
         """
-
-        # FIXME: 'nostatus' is a setting: uses 'get_setting()' for this
-        if self.parent.nostatus:
+        if get_setting("write_daq_status"):
+            self.output_file.write(str(msg) + "\n")
+        else:
+            # only write lines containing trigger data, discard status lines
             fields = msg.rstrip("\n").split(" ")
             if (len(fields) == 16) and (len(fields[0]) == 8):
                 self.output_file.write(str(msg) + "\n")
             else:
                 self.logger.debug(("Not writing line '%s' to file " +
-                                  "because it does not contain " +
-                                  "trigger data") % msg)
-        else:
-            self.output_file.write(str(msg) + "\n")
+                                   "because it does not contain " +
+                                   "trigger data") % msg)
 
     def finish(self):
         """
-        Cleanup
+        Cleanup, close and rename raw file
 
         :returns: None
         """
-        if self.write_raw_file:
+        if not self.output_file.closed:
+            stop_time = datetime.datetime.now()
+
+            # add duration
+            self.measurement_duration += stop_time - self.start_time
+
+            self.output_file.write("# stopped run on: %s\n" %
+                                   stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
             self.output_file.close()
-            # TODO: handle renaming of output file here
+
+        self.logger.info("The raw data was written for %f hours" %
+                         get_hours_from_duration(self.measurement_duration))
+
+        try:
+            rename_muonic_file(self.measurement_duration,
+                               self.output_file.get_filename())
+        except (OSError, IOError):
+            pass
 
 
 class GPSWidget(BaseWidget):
@@ -1788,15 +1844,16 @@ class GPSWidget(BaseWidget):
         """
         result = str(self.gps_dump[line]).strip()
         return result.replace(strip_string, '')
-    
+
     def update(self):
         """
         Readout the GPS information and display it in the tab.
 
         :returns: bool
         """
-        if len(self.gps_dump) < self.GPS_DUMP_LENGTH:
-            self.logger.warning("Error retrieving GPS information.")
+        if len(self.gps_dump) <= self.GPS_DUMP_LENGTH:
+            self.gps_dump.append(self.daq_get_last_msg())
+        if len(self.gps_dump) != self.GPS_DUMP_LENGTH:
             return False
 
         gps_time = ''

@@ -3,6 +3,12 @@ Get the absolute timing of the pulses by use of the gps time
 Calculate also a non hex representation of leading and falling
 edges of the pulses.
 """
+import datetime
+
+from muonic.util import rename_muonic_file, get_hours_from_duration
+from muonic.util import WrappedFile
+
+__all__ = ["PulseExtractor", "DecayTriggerThorough", "VelocityTrigger"]
 
 # for the pulses 
 # 8 bits give a hex number
@@ -35,11 +41,21 @@ class PulseExtractor:
     If a pulse file is given, all the extracted pulses will be
     written into it.
 
-    :param pulse_file: filename of the pulse file
-    :type pulse_file: str
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param filename: filename of the pulse file
+    :type filename: str
     """
 
-    def __init__(self, pulse_file=None):
+    def __init__(self, logger, filename):
+        self.logger = logger
+        self.pulse_file = WrappedFile(filename)
+        self._write_pulses = False
+
+        # start time and duration
+        self.start_time = datetime.datetime.now()
+        self.measurement_duration = datetime.timedelta()
+
         # TODO change to dictionaries, they might be faster
         self.re = {"ch0": [], "ch1": [], "ch2": [], "ch3": []}
         self.fe = {"ch0": [], "ch1": [], "ch2": [], "ch3": []}
@@ -67,10 +83,55 @@ class PulseExtractor:
         self.passed_one_pps = 0
         self.prev_last_one_pps = 0
 
-        if pulse_file:
-            self.pulse_file = open(pulse_file, 'w')
+    def write_pulses(self, write_pulses):
+        """
+        Enables or disables writing pulses to file.
+
+        :param write_pulses: write pulses to file
+        :type write_pulses: bool
+        :return: None
+        """
+        if self._write_pulses == write_pulses:
+            return
+
+        if self.pulse_file is not None:
+            if write_pulses:
+                self.start_time = datetime.datetime.now()
+                self.pulse_file.open("a")
+                self.logger.debug("Starting to write pulses to %s" %
+                                  repr(self.pulse_file))
+            else:
+                stop_time = datetime.datetime.now()
+
+                # add duration
+                self.measurement_duration += stop_time - self.start_time
+                self.pulse_file.close()
+            self._write_pulses = write_pulses
         else:
-            self.pulse_file = False
+            self._write_pulses = False
+
+    def finish(self):
+        """
+        Cleanup, close and rename pulse file
+
+        :returns: None
+        """
+        if self._write_pulses:
+            stop_time = datetime.datetime.now()
+
+            # add duration
+            self.measurement_duration += stop_time - self.start_time
+            self.pulse_file.close()
+
+        self.logger.info("The pulse extraction measurement was " +
+                         "active for %f hours" %
+                         get_hours_from_duration(self.measurement_duration))
+
+        try:
+            rename_muonic_file(self.measurement_duration,
+                               self.pulse_file.get_filename())
+        except (OSError, IOError):
+            pass
 
     def _calculate_edges(self, line, counter_diff=0):
         """
@@ -237,7 +298,7 @@ class PulseExtractor:
             extracted_pulses = (self.last_trigger_time, pulses["ch0"],
                                 pulses["ch1"], pulses["ch2"], pulses["ch3"])
 
-            if self.pulse_file:
+            if self._write_pulses:
                 self.pulse_file.write(extracted_pulses.__repr__() + '\n')
 
             # as the pulses for the last event are done,
@@ -270,9 +331,6 @@ class PulseExtractor:
 
         # end of if trigger flag
         self.last_trigger_count = trigger_count
-
-    def close_file(self):
-        self.pulse_file.close()
 
 
 class VelocityTrigger:

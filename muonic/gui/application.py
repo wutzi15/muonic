@@ -1,9 +1,8 @@
+# -*- coding: utf-8 -*-
 """
 Provides the main window for the gui part of muonic
 """
 import datetime
-import os
-import shutil
 import time
 import webbrowser
 
@@ -12,8 +11,7 @@ from PyQt4 import QtCore
 
 from muonic import __version__, __source_location__
 from muonic import __docs_hosted_at__, __manual_hosted_at__
-from muonic import DATA_PATH
-from muonic.analysis.analyzer import PulseExtractor
+from muonic.analysis import PulseExtractor
 from muonic.daq import DAQIOError
 from muonic.gui.helpers import set_large_plot_style
 from muonic.gui.dialogs import ThresholdDialog, ConfigDialog
@@ -21,233 +19,186 @@ from muonic.gui.dialogs import HelpDialog, AdvancedDialog
 from muonic.gui.widgets import VelocityWidget, PulseAnalyzerWidget
 from muonic.gui.widgets import DecayWidget, DAQWidget, RateWidget
 from muonic.gui.widgets import GPSWidget, StatusWidget
-from muonic.util import add_widget, get_widget, update_setting, get_setting
-
-
-tr = QtCore.QCoreApplication.translate
-
-# create data path if not present
-if not os.path.isdir(DATA_PATH):
-    os.mkdir(DATA_PATH, 0755)
+from muonic.util import update_setting, get_setting
+from muonic.util import apply_default_settings, get_muonic_filename
 
 
 class Application(QtGui.QMainWindow):
     """
     The main application
+
+    :param daq: daq card connection
+    :type daq: muonic.daq.provider.BaseDAQProvider
+    :param logger: logger object
+    :type logger: logging.Logger
+    :param opts: command line options
+    :type opts: Namespace
     """
+    def __init__(self, daq, logger, opts):
+        QtGui.QMainWindow.__init__(self)
 
-    def __init__(self, daq, logger, opts,  win_parent=None):
-        QtGui.QMainWindow.__init__(self, win_parent)
-        self.daq = daq
-        self.opts = opts
-        # try to establish upstream compatibility
-        # B. introduced a DAQMessage here, but I think
-        # this is overkill
-        # however, making it a member allows to distribute
-        # it more easily to daughter widgets
-        self.daq_msg = False
+        # start time of the application
+        self.start_time = datetime.datetime.now()
 
-        # we have to ensure that the DAQcard does not sent
-        # any automatic status reports every x seconds
-        #FIXME: there was an option for that!
-        self.nostatus = opts.nostatus
-        if self.nostatus:
-            self.daq.put('ST 0')
+        # apply default settings first
+        apply_default_settings()
 
         QtCore.QLocale.setDefault(QtCore.QLocale("en_us"))
-        self.setWindowTitle(QtCore.QString("muonic"))
-        self.statusbar = QtGui.QMainWindow.statusBar(self)
+        self.setWindowTitle("muonic")
+
+        # params
+        self.daq = daq
         self.logger = logger
+        self.opts = opts
 
-        self.setup_screen()
-
-        # put the file in the data directory
-        # we chose a global format for naming the files -> decided on 18/01/2012
-        # we use GMT times
-        # "Zur einheitlichen Datenbezeichnung schlage ich folgendes Format vor:
-        # JJJJ-MM-TT_y_x_vn.dateiformat (JJJJ-Jahr; MM-Monat; TT-Speichertag bzw.
-        # Beendigung der Messung; y: G oder L ausw?hlen, G steht f?r **We add R for rate P for pulses and RW for RAW **
-        # Geschwindigkeitsmessung/L f?r Lebensdauermessung; x-Messzeit in Stunden;
-        # v-erster Buchstabe Vorname; n-erster Buchstabe Familienname)."
-        # TODO: consistancy....        
- 
-        # the time when the rate measurement is started
-        self.now = datetime.datetime.now()
-
-        # new start
-        filename_template = "%s_%%s_HOURS_%s" % (self.now.strftime('%Y-%m-%d_%H-%M-%S'), opts.user[:2])
-        self.logger.info("filename_template: " + filename_template)
-
-        filename_r = os.path.join(DATA_PATH, filename_template % "R")
-
-        self.logger.info("filename_r: " + filename_r)
-        # new end
-
-        self.filename = os.path.join(DATA_PATH, "%s_%s_HOURS_%s%s" % (self.now.strftime('%Y-%m-%d_%H-%M-%S'), "R", opts.user[0], opts.user[1]))
-        self.logger.debug("Writing Rates to %s." %self.filename)
-        self.rawfilename = os.path.join(DATA_PATH, "%s_%s_HOURS_%s%s" % (self.now.strftime('%Y-%m-%d_%H-%M-%S'), "RAW", opts.user[0], opts.user[1]))
-        self.raw_mes_start = False
-
-        self.decayfilename = os.path.join(DATA_PATH, "%s_%s_HOURS_%s%s" % (self.now.strftime('%Y-%m-%d_%H-%M-%S'), "L", opts.user[0], opts.user[1]))
-        self.pulse_mes_start = None
-        self.writepulses = opts.writepulses
-        if opts.writepulses:
-                self.daq.put('CE')
-                self.pulsefilename = os.path.join(DATA_PATH, "%s_%s_HOURS_%s%s" % (self.now.strftime('%Y-%m-%d_%H-%M-%S'), "P", opts.user[0], opts.user[1]))
-                self.logger.debug("Writing pulses to %s." %self.pulsefilename)
-                self.pulse_mes_start = self.now
-        else:
-                self.pulsefilename = ''
-                self.pulse_mes_start = False
-
-        # update_setting("write_pulses", opts.writepulses)
-
-        self.daq.put('TL')  # get the thresholds
-        time.sleep(0.5)  # give the daq some time to ract
-        self.threshold_ch0 = 300
-        self.threshold_ch1 = 300
-        self.threshold_ch2 = 300
-        self.threshold_ch3 = 300
-
-        self.channelcheckbox_0 = True
-        self.channelcheckbox_1 = True
-        self.channelcheckbox_2 = True
-        self.channelcheckbox_3 = True
-        self.coincidencecheckbox_0 = True
-        self.coincidencecheckbox_1 = False
-        self.coincidencecheckbox_2 = False
-        self.coincidencecheckbox_3 = False
-        self.vetocheckbox = False
-        self.vetocheckbox_0 = False
-        self.vetocheckbox_1 = False
-        self.vetocheckbox_2 = False
-
-        # # channel configuration and thresholds
-        # for i in range(4):
-        #     update_setting("threshold_ch%d" % i, 300)
-        #     update_setting("active_ch%d" % i, True)
-        #     update_setting("coincidence%d" % i, True if i == 0 else False)
-        #     if i == 0:
-        #         update_setting("veto", False)
-        #     else:
-        #         update_setting("veto_ch%d" % i, False)
-
-        # # advanced configuration
-        # update_setting("write_daq_status", not opts.nostatus)
-        # update_setting("time_window", opts.timewindow)
-        # update_setting("coincidence_time", 0.)
-        
-        while self.daq.data_available():
-            try:
-                msg = self.daq.get(0)
-                self.get_thresholds_from_queue(msg)
-
-            except DAQIOError:
-                self.logger.debug("Queue empty!")
-
-        self.coincidence_time = 0.
-
-        self.daq.put('DC')  # get the channel config
-        time.sleep(0.5)  # give the daq some time to react
-        while self.daq.data_available():
-            try:
-                msg = self.daq.get(0)
-                self.get_channels_from_queue(msg)
-
-            except DAQIOError:
-                self.logger.debug("Queue empty!")
-                
-        # the pulseextractor for direct analysis
-        self.pulseextractor = PulseExtractor(pulse_file=self.pulsefilename)
-        self.pulses = None
-
-        # A timer to periodically call processIncoming and check what is
-        # in the queue
-        
         # tab widget to hold the different physics widgets
         self.tab_widget = QtGui.QTabWidget(self)
 
-        self.tab_widget.mainwindow = self.parentWidget()
+        # widget store for the tab widgets to reference later
+        self._widgets = dict()
 
-        add_widget("main", self.parentWidget())
+        # setup status bar
+        self.status_bar = QtGui.QMainWindow.statusBar(self)
 
-        self.tab_widget.addTab(RateWidget(logger, parent=self), "Muon Rates")
-        self.tab_widget.ratewidget = self.tab_widget.widget(0)
+        # last daq message
+        self.last_daq_msg = False
 
-        add_widget("rate", self.tab_widget.widget(0))
+        # detected pulses
+        self.pulses = None
 
-        self.tab_widget.addTab(PulseAnalyzerWidget(logger, parent=self), "Pulse Analyzer")
-        self.tab_widget.pulseanalyzerwidget = self.tab_widget.widget(1)
+        # generate filenames
+        self.rate_filename = get_muonic_filename(self.start_time,
+                                                 "R", opts.user)
+        self.raw_filename = get_muonic_filename(self.start_time,
+                                                "RAW", opts.user)
+        self.decay_filename = get_muonic_filename(self.start_time,
+                                                  "L", opts.user)
+        self.pulse_filename = get_muonic_filename(self.start_time,
+                                                  "P", opts.user)
 
-        add_widget("pulse", self.tab_widget.widget(1))
+        # store command line settings
+        update_setting("write_pulses", opts.write_pulses)
+        update_setting("write_daq_status", opts.write_daq_status)
+        update_setting("time_window", opts.time_window)
 
-        self.tab_widget.addTab(DecayWidget(logger, parent=self), "Muon Decay")
-        self.tab_widget.decaywidget = self.tab_widget.widget(2)
+        # we have to ensure that the DAQ card does not sent any automatic
+        # status reports every x seconds if 'write_daq_status' is set to False
+        if not opts.write_daq_status:
+            # disable status reporting
+            self.daq.put('ST 0')
 
-        add_widget("decay", self.tab_widget.widget(2))
-      
-        self.tab_widget.addTab(VelocityWidget(logger, parent=self), "Muon Velocity")
-        self.tab_widget.velocitywidget = self.tab_widget.widget(3)
+        # get the last configuration from the card
+        self.get_configuration_from_daq_card()
 
-        add_widget("velocity", self.tab_widget.widget(3))
+        # create pulse extractor for direct analysis
+        self.pulse_extractor = PulseExtractor(logger, self.pulse_filename)
 
-        self.tab_widget.addTab(StatusWidget(logger, parent=self), "Status")
-        self.tab_widget.statuswidget = self.tab_widget.widget(4)
+        if opts.write_pulses:
+            # write pulses to file all the time
+            self.daq.put('CE')
+            self.pulse_extractor.write_pulses(True)
 
-        add_widget("status", self.tab_widget.widget(4))
-
-        self.tab_widget.addTab(DAQWidget(logger, parent=self), "DAQ Output")
-        self.tab_widget.daqwidget = self.tab_widget.widget(5)
-
-        add_widget("daq", self.tab_widget.widget(5))
-
-        self.tab_widget.addTab(GPSWidget(logger, parent=self), "GPS Output")
-        self.tab_widget.gpswidget = self.tab_widget.widget(6)
-
-        add_widget("gps", self.tab_widget.widget(6))
-
-        # widgets which should be calculated in processIncoming.
-        # The widget is only calculated when it is set to active (True)
-        #  via widget.active
-        # only widgets which need pulses go here
-        self.pulse_widgets = [self.tab_widget.pulseanalyzerwidget,
-                              self.tab_widget.velocitywidget,
-                              self.tab_widget.decaywidget]
-
-        # widgets which shuld be dynmacally updated by the timer should be in this list
-        self.dynamic_widgets = [self.tab_widget.decaywidget,
-                                self.tab_widget.pulseanalyzerwidget,
-                                self.tab_widget.velocitywidget,
-                                self.tab_widget.ratewidget]
+        # create tabbed widgets
+        self.add_widget("rate", "Muon Rates",
+                        RateWidget(logger, self.rate_filename, parent=self))
+        self.add_widget("pulse", "Pulse Analyzer",
+                        PulseAnalyzerWidget(logger, self.pulse_extractor,
+                                            parent=self))
+        self.add_widget("decay", "Muon Decay",
+                        DecayWidget(logger, self.decay_filename,
+                                    self.pulse_extractor, parent=self))
+        self.add_widget("velocity", "Muon Velocity",
+                        VelocityWidget(logger, self.pulse_extractor,
+                                       parent=self))
+        self.add_widget("status", "Status", StatusWidget(logger, parent=self))
+        self.add_widget("daq", "DAQ Output",
+                        DAQWidget(logger, self.raw_filename, parent=self))
+        self.add_widget("gps", "GPS Output", GPSWidget(logger, parent=self))
 
         self.setCentralWidget(self.tab_widget)
 
+        # widgets which should be calculated in process_incoming.
+        # The widget is only calculated when it is set to active (True)
+        # via widget.active(True). only widgets which need pulses go here
+        self.pulse_widgets = [self.get_widget("pulse"),
+                              self.get_widget("decay"),
+                              self.get_widget("velocity")]
+
+        # widgets which should be dynamically updated by the timer
+        # should be in this list
+        self.dynamic_widgets = [self.get_widget("rate"),
+                                self.get_widget("pulse"),
+                                self.get_widget("decay"),
+                                self.get_widget("velocity")]
+
+        # timer to periodically call processIncoming and check
+        # what is in the queue
         self.timer = QtCore.QTimer()
         QtCore.QObject.connect(self.timer,
                                QtCore.SIGNAL("timeout()"),
                                self.process_incoming)
 
+        # time update widgets the have dynamic plots in them
         self.widget_updater = QtCore.QTimer()
         QtCore.QObject.connect(self.widget_updater,
                                QtCore.SIGNAL("timeout()"),
-                               self.widget_update)
+                               self.update_dynamic)
 
-        self.timewindow = opts.timewindow  # 5.0
-        self.logger.info("Timewindow is %4.2f" % self.timewindow)
+        self.logger.info("Time window is %4.2f" % opts.time_window)
 
+        self.setup_screen()
         self.setup_menus()
-
         self.process_incoming()
 
+        # start update timers
         self.timer.start(1000)
-        self.widget_updater.start(self.timewindow * 1000)
+        self.widget_updater.start(opts.time_window * 1000)
+
+    def get_configuration_from_daq_card(self):
+        """
+        Get the initial threshold and channel configuration
+        from the DAQ card.
+
+        :returns: None
+        """
+        # get the thresholds
+        self.daq.put('TL')
+        # give the daq some time to react
+        time.sleep(0.5)
+
+        while self.daq.data_available():
+            try:
+                msg = self.daq.get(0)
+                self.get_thresholds_from_msg(msg)
+
+            except DAQIOError:
+                self.logger.debug("Queue empty!")
+
+        # get the channel config
+        self.daq.put('DC')
+        # give the daq some time to react
+        time.sleep(0.5)
+
+        while self.daq.data_available():
+            try:
+                msg = self.daq.get(0)
+                self.get_channels_from_msg(msg)
+
+            except DAQIOError:
+                self.logger.debug("Queue empty!")
 
     def setup_screen(self):
+        """
+        Setup the plot style depending on screen size.
+
+        :returns: None
+        """
         desktop = QtGui.QDesktopWidget()
         screen_size = QtCore.QRectF(desktop.screenGeometry(
                 desktop.primaryScreen()))
         screen_x = screen_size.x() + screen_size.width()
         screen_y = screen_size.y() + screen_size.height()
+
         self.logger.info("Screen with size %i x %i detected!" %
                          (screen_x, screen_y))
 
@@ -257,16 +208,23 @@ class Application(QtGui.QMainWindow):
             set_large_plot_style()
 
     def setup_menus(self):
+        """
+        Setup the menu bar and populate menus.
+
+        :returns: None
+        """
         # create the menubar
         menu_bar = self.menuBar()
 
         # create file menu
         file_menu = menu_bar.addMenu('&File')
 
-        exit_action = QtGui.QAction(QtGui.QIcon('/usr/share/icons/gnome/24x24/actions/exit.png'), 'Exit', self)
+        exit_action = QtGui.QAction(QtGui.QIcon(
+                "/usr/share/icons/gnome/24x24/actions/exit.png"), 'Exit', self)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.setStatusTip('Exit application')
-        self.connect(exit_action, QtCore.SIGNAL('triggered()'), QtCore.SLOT('close()'))
+        self.connect(exit_action, QtCore.SIGNAL('triggered()'),
+                     QtCore.SLOT('close()'))
 
         file_menu.addAction(exit_action)
 
@@ -275,15 +233,18 @@ class Application(QtGui.QMainWindow):
 
         config_action = QtGui.QAction('Channel Configuration', self)
         config_action.setStatusTip('Configure the Coincidences and channels')
-        self.connect(config_action, QtCore.SIGNAL('triggered()'), self.config_menu)
+        self.connect(config_action, QtCore.SIGNAL('triggered()'),
+                     self.config_menu)
 
         thresholds_action = QtGui.QAction('Thresholds', self)
         thresholds_action.setStatusTip('Set trigger thresholds')
-        self.connect(thresholds_action, QtCore.SIGNAL('triggered()'), self.threshold_menu)
+        self.connect(thresholds_action, QtCore.SIGNAL('triggered()'),
+                     self.threshold_menu)
 
         advanced_action = QtGui.QAction('Advanced Configurations', self)
         advanced_action.setStatusTip('Advanced configurations')
-        self.connect(advanced_action, QtCore.SIGNAL('triggered()'), self.advanced_menu)
+        self.connect(advanced_action, QtCore.SIGNAL('triggered()'),
+                     self.advanced_menu)
 
         settings_menu.addAction(config_action)
         settings_menu.addAction(thresholds_action)
@@ -293,94 +254,166 @@ class Application(QtGui.QMainWindow):
         help_menu = menu_bar.addMenu('&Help')
 
         manualdoc_action = QtGui.QAction('Website with Manual', self)
-        self.connect(manualdoc_action, QtCore.SIGNAL('triggered()'), self.manualdoc_menu)
+        self.connect(manualdoc_action, QtCore.SIGNAL('triggered()'),
+                     self.manualdoc_menu)
 
         sphinxdoc_action = QtGui.QAction('Technical documentation', self)
-        self.connect(sphinxdoc_action, QtCore.SIGNAL('triggered()'), self.sphinxdoc_menu)
+        self.connect(sphinxdoc_action, QtCore.SIGNAL('triggered()'),
+                     self.sphinxdoc_menu)
 
         commands_action = QtGui.QAction('DAQ Commands', self)
-        self.connect(commands_action, QtCore.SIGNAL('triggered()'), self.help_menu)
+        self.connect(commands_action, QtCore.SIGNAL('triggered()'),
+                     self.help_menu)
 
         about_action = QtGui.QAction('About muonic', self)
-        self.connect(about_action, QtCore.SIGNAL('triggered()'), self.about_menu)
+        self.connect(about_action, QtCore.SIGNAL('triggered()'),
+                     self.about_menu)
 
         help_menu.addAction(manualdoc_action)
         help_menu.addAction(commands_action)
         help_menu.addAction(sphinxdoc_action)
         help_menu.addAction(about_action)
 
-    # the individual menus
+    def add_widget(self, name, label, widget):
+        """
+        Adds widget to the store.
+
+        Raises WidgetWithNameExistsError if a widget of that name already
+        exists and TypeError if widget is no subclass of QtGui.QWidget.
+
+        :param name: widget name
+        :type name: str
+        :param label: the tab label
+        :type label: str
+        :param widget: widget object
+        :type widget: object
+        :returns: None
+        :raises: WidgetWithNameExistsError, TypeError
+        """
+
+        if widget is None:
+            return
+        if self.have_widget(name):
+            raise WidgetWithNameExistsError(
+                    "widget with name '%s' already exists" % name)
+        else:
+            if not isinstance(widget, QtGui.QWidget):
+                raise TypeError("widget has to be a subclass 'QtGui.QWidget'")
+            else:
+                self.tab_widget.addTab(widget, label)
+                self._widgets[name] = widget
+
+    def have_widget(self, name):
+        """
+        Returns true if widget with name exists, False otherwise.
+
+        :param name: widget name
+        :type name: str
+        :returns: bool
+        """
+        return name in self._widgets
+
+    def get_widget(self, name):
+        """
+        Retrieved a widget from the store.
+
+        :param name: widget name
+        :type name: str
+        :returns: object
+        """
+        return self._widgets.get(name)
+
+    def is_widget_active(self, name):
+        """
+        Returns True if the widget exists and is active, False otherwise
+
+        :param name: widget name
+        :type name: str
+        :returns: bool
+        """
+        if self.have_widget(name):
+            return self.get_widget(name).active()
+        return False
+
     def threshold_menu(self):
         """
-        Shows the threshold dialogue
+        Shows thresholds dialog.
+
+        :returns: None
         """
-        # get the actual Thresholds...
+        # get the actual thresholds from the DAQ card
         self.daq.put('TL')
-        # wait explicitely till the thresholds get loaded
+
+        # wait explicitly until the thresholds get loaded
         self.logger.info("loading threshold information..")
         time.sleep(1.5)
-        threshold_window = ThresholdDialog([self.threshold_ch0,
-                                           self.threshold_ch1,
-                                           self.threshold_ch2,
-                                           self.threshold_ch3])
-        rv = threshold_window.exec_()
-        if rv == 1:
+
+        # get thresholds from settings
+        thresholds = [get_setting("threshold_ch%d" % i, 300) for i in range(4)]
+
+        # show dialog
+        dialog = ThresholdDialog(thresholds)
+
+        if dialog.exec_() == 1:
             commands = []
-            for ch in ["0","1","2","3"]:
-                val = threshold_window.get_widget_value("threshold_ch_" + ch)
-                commands.append("TL " + ch + " " + str(val))
-                
+
+            # update thresholds config
+            for ch in range(4):
+                val = dialog.get_widget_value("threshold_ch_%d" % ch)
+                update_setting("threshold_ch%d" % ch, val)
+                commands.append("TL %d %s" % (ch, val))
+
+            # apply new thresholds to daq card
             for cmd in commands:
                 self.daq.put(cmd)
-                self.logger.info("Set threshold of channel %s to %s" %(cmd.split()[1],cmd.split()[2]))
+                self.logger.info("Set threshold of channel %s to %s" %
+                                 (cmd.split()[1], cmd.split()[2]))
 
         self.daq.put('TL')
   
     def config_menu(self):
         """
-        Show the config dialog
+        Show the channel config dialog.
+
+        :returns: None
         """
-        gatewidth = 0.
-        # get the actual channels...
+        # get the actual channels from the DAQ card
         self.daq.put('DC')
-        # wait explicitely till the channels get loaded
+
+        # wait explicitly until the channels get loaded
         self.logger.info("loading channel information...")
         time.sleep(1)
 
-        config_window = ConfigDialog([self.channelcheckbox_0,
-                                      self.channelcheckbox_1,
-                                      self.channelcheckbox_2,
-                                      self.channelcheckbox_3],
-                                     [self.coincidencecheckbox_0,
-                                      self.coincidencecheckbox_1,
-                                      self.coincidencecheckbox_2,
-                                      self.coincidencecheckbox_3],
-                                     self.vetocheckbox,
-                                     [self.vetocheckbox_0,
-                                      self.vetocheckbox_1,
-                                      self.vetocheckbox_2])
-        rv = config_window.exec_()
-        if rv == 1:
-            chan0_active = config_window.get_widget_value("channel_checkbox_0")
-            chan1_active = config_window.get_widget_value("channel_checkbox_1")
-            chan2_active = config_window.get_widget_value("channel_checkbox_2")
-            chan3_active = config_window.get_widget_value("channel_checkbox_3")
-            singles = config_window.get_widget_value("coincidence_checkbox_0")
-            # if singles:
-            #    self.tabwidget.ratewidget.hide_trigger = True
-            # else:
-            self.tab_widget.ratewidget.hide_trigger = False
-            
-            twofold = config_window.get_widget_value("coincidence_checkbox_1")
-            threefold = config_window.get_widget_value("coincidence_checkbox_2")
-            fourfold = config_window.get_widget_value("coincidence_checkbox_3")
+        # get current config values
+        channel_config = [get_setting("active_ch%d" % i) for i in range(4)]
+        coincidence_config = [get_setting("coincidence%d" % i)
+                              for i in range(4)]
+        veto = get_setting("veto")
+        veto_config = [get_setting("veto_ch%d" % i) for i in range(3)]
 
-            veto = config_window.get_widget_value("veto_checkbox")
-            vetochan1 = config_window.get_widget_value("veto_checkbox_0")
-            vetochan2 = config_window.get_widget_value("veto_checkbox_1")
-            vetochan3 = config_window.get_widget_value("veto_checkbox_2")
+        # show dialog
+        dialog = ConfigDialog(channel_config, coincidence_config,
+                              veto, veto_config)
+
+        # FIXME: rewrite!
+        if dialog.exec_() == 1:
+            chan0_active = dialog.get_widget_value("channel_checkbox_0")
+            chan1_active = dialog.get_widget_value("channel_checkbox_1")
+            chan2_active = dialog.get_widget_value("channel_checkbox_2")
+            chan3_active = dialog.get_widget_value("channel_checkbox_3")
+
+            singles = dialog.get_widget_value("coincidence_checkbox_0")
+            twofold = dialog.get_widget_value("coincidence_checkbox_1")
+            threefold = dialog.get_widget_value("coincidence_checkbox_2")
+            fourfold = dialog.get_widget_value("coincidence_checkbox_3")
+
+            veto = dialog.get_widget_value("veto_checkbox")
+            vetochan1 = dialog.get_widget_value("veto_checkbox_0")
+            vetochan2 = dialog.get_widget_value("veto_checkbox_1")
+            vetochan3 = dialog.get_widget_value("veto_checkbox_2")
             
             tmp_msg = ''
+
             if veto:
                 if vetochan1:
                     tmp_msg += '01'
@@ -392,7 +425,12 @@ class Application(QtGui.QMainWindow):
                     tmp_msg += '00' 
             else:
                 tmp_msg += '00'
-    
+
+            update_setting("veto", veto)
+            update_setting("veto_ch0", vetochan1)
+            update_setting("veto_ch1", vetochan2)
+            update_setting("veto_ch2", vetochan3)
+
             coincidence_set = False
             for coincidence in [(singles, '00'), (twofold, '01'), (threefold, '10'), (fourfold, '11')]:
                 if coincidence[0]:
@@ -402,6 +440,11 @@ class Application(QtGui.QMainWindow):
             # else case, just in case
             if not coincidence_set:
                 tmp_msg += '00'
+
+            update_setting("coincidence0", singles)
+            update_setting("coincidence1", twofold)
+            update_setting("coincidence2", threefold)
+            update_setting("coincidence3", fourfold)
     
             # now calculate the correct expression for the first
             # four bits
@@ -420,6 +463,11 @@ class Application(QtGui.QMainWindow):
                 
             else:
                 msg += hex(int(''.join(enable), 2))[-1].capitalize()
+
+            update_setting("active_ch0", chan0_active)
+            update_setting("active_ch1", chan1_active)
+            update_setting("active_ch2", chan2_active)
+            update_setting("active_ch3", chan3_active)
             
             self.daq.put(msg)
             self.logger.info('The following message was sent to DAQ: %s' % msg)
@@ -432,57 +480,81 @@ class Application(QtGui.QMainWindow):
             self.logger.debug('coincidence twofold %s' % twofold)
             self.logger.debug('coincidence threefold %s' % threefold)
             self.logger.debug('coincidence fourfold %s' % fourfold)
+
         self.daq.put('DC')
            
     def advanced_menu(self):
         """
-        Show a config dialog for advanced options, ie. gatewidth, interval for the rate measurement, options for writing pulsefile and the nostatus option
+        Show a config dialog for advanced options, ie. gate width,
+        interval for the rate measurement, options for writing pulse file
+        and the write_daq_status option.
+
+        :returns: None
         """
-        gatewidth = 0.
-        # get the actual channels...
+        # get the actual channels from the DAQ card
         self.daq.put('DC')
-        # wait explicitely till the channels get loaded
+
+        # wait explicitly until the channels get loaded
         self.logger.info("loading channel information...")
         time.sleep(1)
 
-        adavanced_window = AdvancedDialog(self.coincidence_time, self.timewindow, self.nostatus)
-        rv = adavanced_window.exec_()
-        if rv == 1:
-            _timewindow = float(adavanced_window.get_widget_value("time_window"))
-            _gatewidth = bin(int(adavanced_window.get_widget_value("gate_width"))/10).replace('0b','').zfill(16)
-            _nostatus = adavanced_window.get_widget_value("write_status")
-            
-            _03 = format(int(_gatewidth[0:8],2),'x').zfill(2)
-            _02 = format(int(_gatewidth[8:16],2),'x').zfill(2)
-            tmp_msg = 'WC 03 '+str(_03)
-            self.daq.put(tmp_msg)
-            tmp_msg = 'WC 02 '+str(_02)
-            self.daq.put(tmp_msg)
-            if _timewindow < 0.01 or _timewindow > 10000.:
-                self.logger.warning("Timewindow too small or too big, resetting to 5 s.")
-                self.timewindow = 5.0
-            else:
-                self.timewindow = _timewindow
-            self.widget_updater.start(self.timewindow * 1000)
-            self.nostatus = not _nostatus
+        # show dialog
+        dialog = AdvancedDialog(get_setting("gate_width"),
+                                get_setting("time_window"),
+                                get_setting("write_daq_status"))
 
-            self.logger.debug('Writing gatewidth WC 02 %s WC 03 %s' % (_02, _03))
-            self.logger.debug('Setting timewindow to %.2f ' % _timewindow)
-            self.logger.debug('Switching nostatus option to %s' % _nostatus)
+        if dialog.exec_() == 1:
+            # update time window
+            time_window = float(dialog.get_widget_value("time_window"))
+
+            if time_window < 0.01 or time_window > 10000.:
+                self.logger.warning("Time window too small or too big, " +
+                                    "resetting to 5 s.")
+                time_window = 5.0
+
+            update_setting("time_window", time_window)
+
+            # update write_daq_status
+            write_daq_status = dialog.get_widget_value("write_daq_status")
+            update_setting("write_daq_status", write_daq_status)
+
+            # update gate width
+            gate_width = int(dialog.get_widget_value("gate_width"))
+            update_setting("gate_width", gate_width)
+
+            # transform gate width for daq msg
+            gate_width = bin(gate_width / 10).replace('0b', '').zfill(16)
+            gate_width_03 = format(int(gate_width[0:8], 2), 'x').zfill(2)
+            gate_width_02 = format(int(gate_width[8:16], 2), 'x').zfill(2)
+
+            # set gate widths
+            self.daq.put("WC 03 %s" % gate_width_03)
+            self.daq.put("WC 02 %s" % gate_width_02)
+
+            # adjust the update interval
+            self.widget_updater.start(time_window * 1000)
+
+            self.logger.debug('Writing gate width WC 02 %s WC 03 %s' %
+                              (gate_width_02, gate_width_03))
+            self.logger.debug('Setting time window to %.2f ' % time_window)
+            self.logger.debug('Switching write_daq_status option to %s' %
+                              write_daq_status)
 
         self.daq.put('DC')
 
-    @staticmethod
-    def help_menu():
+    def help_menu(self):
         """
-        Show a simple help menu
+        Show a simple help dialog.
+
+        :returns: None
         """
-        help_window = HelpDialog()
-        help_window.exec_()
+        HelpDialog().exec_()
         
     def about_menu(self):
         """
-        Show a link to the online documentation
+        Show a link to the online documentation.
+
+        :returns: None
         """
         QtGui.QMessageBox.information(self, "about muonic",
                                       "version: %s\n source located at: %s" %
@@ -491,57 +563,59 @@ class Application(QtGui.QMainWindow):
     def sphinxdoc_menu(self):
         """
         Show the sphinx documentation that comes with muonic in a
-        browser
+        browser.
+
+        :returns: None
         """
-        #docs = (os.path.join(DOCPATH,"index.html"))
         docs = __docs_hosted_at__
-        self.logger.debug("Opening docs from %s" %docs)
-        success = webbrowser.open(docs)
-        if not success:
-            self.logger.warning("Can not open webbrowser! Browse to %s to see the docs" %docs)
+
+        self.logger.debug("Opening docs from %s" % docs)
+
+        if not webbrowser.open(docs):
+            self.logger.warning("Can not open webbrowser! " +
+                                "Browse to %s to see the docs" % docs)
 
     def manualdoc_menu(self):
         """
-        Show the manual that comes with muonic in a pdf viewer
+        Show the manual that comes with muonic in a pdf viewer.
+
+        :returns: None
         """
-        #docs = (os.path.join(DOCPATH,"manual.pdf"))
         docs = __manual_hosted_at__
 
-        self.logger.info("opening docs from %s" %docs)
-        success = webbrowser.open(docs)
-        if not success:
+        self.logger.info("Opening docs from %s" % docs)
+
+        if not webbrowser.open(docs):
             self.logger.warning("Can not open PDF reader!")
 
-    def get_thresholds_from_queue(self, msg):
+    def get_thresholds_from_msg(self, msg):
         """
-        Explicitely scan message for threshold information
-        Return True if found, else False
+        Explicitly scan message for threshold information.
+
+        Return True if found, False otherwise.
+
+        :param msg: daq message
+        :type msg: str
+        :returns: bool
         """
         if msg.startswith('TL') and len(msg) > 9:
             msg = msg.split('=')
-            self.threshold_ch0 = int(msg[1][:-2])
-            self.threshold_ch1 = int(msg[2][:-2])
-            self.threshold_ch2 = int(msg[3][:-2])
-            self.threshold_ch3 = int(msg[4])
-            self.logger.debug("Got Thresholds %i %i %i %i" %
-                              (self.threshold_ch0, self.threshold_ch1,
-                               self.threshold_ch2, self.threshold_ch3))
-
-            # update_setting("threshold_ch0", int(msg[1][:-2]))
-            # update_setting("threshold_ch1", int(msg[2][:-2]))
-            # update_setting("threshold_ch2", int(msg[3][:-2]))
-            # update_setting("threshold_ch3", int(msg[4]))
-            # self.logger.debug("Got Thresholds %d %d %d %d" %
-            #                   tuple([get_setting("threshold_ch%d" % i)
-            #                          for i in range(4)]))
+            update_setting("threshold_ch0", int(msg[1][:-2]))
+            update_setting("threshold_ch1", int(msg[2][:-2]))
+            update_setting("threshold_ch2", int(msg[3][:-2]))
+            update_setting("threshold_ch3", int(msg[4]))
+            self.logger.debug("Got Thresholds %d %d %d %d" %
+                              tuple([get_setting("threshold_ch%d" % i)
+                                     for i in range(4)]))
             return True
         else:
             return False
         
-    def get_channels_from_queue(self, msg):
+    def get_channels_from_msg(self, msg):
         """
-        Explicitely scan message for channel information
-        Return True if found, else False
+        Explicitly scan message for channel information.
+
+        Return True if found, False otherwise.
 
         DC gives :
         DC C0=23 C1=71 C2=0A C3=00
@@ -565,205 +639,154 @@ class Application(QtGui.QMainWindow):
         01 - twofold
         10 - threefold
         11 - fourfold
+
+        :param msg: daq message
+        :type msg: str
+        :returns: bool
         """
         if msg.startswith('DC ') and len(msg) > 25:
             msg = msg.split(' ')
-            self.coincidence_time = msg[4].split('=')[1]+ msg[3].split('=')[1]
+
+            coincidence_time = msg[4].split('=')[1]+ msg[3].split('=')[1]
             msg = bin(int(msg[1][3:], 16))[2:].zfill(8)
-            vetoconfig = msg[0:2]
-            coincidenceconfig = msg[2:4]
-            channelconfig = msg[4:8]
+            veto_config = msg[0:2]
+            coincidence_config = msg[2:4]
+            channel_config = msg[4:8]
 
-            self.coincidence_time = int(self.coincidence_time, 16)*10
+            update_setting("gate_width", int(coincidence_time, 16) * 10)
 
-            # coincidence_time = msg[4].split('=')[1]+ msg[3].split('=')[1]
-            # msg = bin(int(msg[1][3:], 16))[2:].zfill(8)
-            # veto_config = msg[0:2]
-            # coincidence_config = msg[2:4]
-            # channel_config = msg[4:8]
+            # set default veto checkboxes
+            for i in range(4):
+                if i == 0:
+                    update_setting("veto", True)
+                else:
+                    update_setting("veto_ch%d" % i, False)
 
-            # update_setting("coincidence_time",
-            #                int(coincidence_time, 16) * 10)
-            
-            self.vetocheckbox_0 = False
-            self.vetocheckbox_1 = False
-            self.vetocheckbox_2 = False
-            self.vetocheckbox = True
+            # update channel config
+            for i in range(4):
+                update_setting("active_ch%d" % i,
+                               channel_config[3 - i] == '1')
 
-            # # set veto checkboxes
-            # for i in range(4):
-            #     if i == 0:
-            #         update_setting("veto", True)
-            #     else:
-            #         update_setting("veto_ch%d" % i, False)
+            # update coincidence config
+            for i, seq in enumerate(['00', '01', '10', '11']):
+                update_setting("coincidence%d" % i,
+                               coincidence_config == seq)
 
-            if str(channelconfig[3]) == '0':
-                self.channelcheckbox_0 = False
-            else:
-                self.channelcheckbox_0 = True
+            # update veto config
+            for i, seq in enumerate(['00', '01', '10', '11']):
+                if veto_config == seq:
+                    if i == 0:
+                        update_setting("veto", False)
+                    else:
+                        update_setting("veto_ch%d" % i, True)
 
-            if str(channelconfig[2]) == '0':
-                self.channelcheckbox_1 = False
-            else:
-                self.channelcheckbox_1 = True
-
-            if str(channelconfig[1]) == '0':
-                self.channelcheckbox_2 = False
-            else:
-                self.channelcheckbox_2 = True
-            if str(channelconfig[0]) == '0':
-                self.channelcheckbox_3 = False
-            else:
-                self.channelcheckbox_3 = True
-            if str(coincidenceconfig) == '00':
-                self.coincidencecheckbox_0 = True
-            else:
-                self.coincidencecheckbox_0 = False
-            if str(coincidenceconfig) == '01':
-                self.coincidencecheckbox_1 = True
-            else:
-                self.coincidencecheckbox_1 = False
-            if str(coincidenceconfig) == '10':
-                self.coincidencecheckbox_2 = True
-            else:
-                self.coincidencecheckbox_2 = False
-
-            if str(coincidenceconfig) == '11':
-                self.coincidencecheckbox_3 = True
-            else:
-                self.coincidencecheckbox_3 = False
-
-            # # update channel config
-            # for i in range(4):
-            #     update_setting("active_ch%d" % i,
-            #                    channel_config[3 - i] == '1')
-            #
-            # # update coincidence config
-            # for i, seq in enumerate(['00', '01', '10', '11']):
-            #     update_setting("coincidence%d" % i,
-            #                    coincidence_config == seq)
-
-            if str(vetoconfig) == '00':
-                self.vetocheckbox = False
-            else:
-                if str(vetoconfig) == '01': self.vetocheckbox_0 = True
-                if str(vetoconfig) == '10': self.vetocheckbox_1 = True
-                if str(vetoconfig) == '11': self.vetocheckbox_2 = True
-
-            # # update veto config
-            # for i, seq in enumerate(['00', '01', '10', '11']):
-            #     if veto_config == seq:
-            #         if i == 0:
-            #             update_setting("veto", False)
-            #         else:
-            #             update_setting("veto_ch%d" % i, True)
-
-            self.logger.debug('Coincidence timewindow %s ns' %(str(self.coincidence_time)))
-            self.logger.debug("Got channel configurations: %i %i %i %i" %(self.channelcheckbox_0,self.channelcheckbox_1,self.channelcheckbox_2,self.channelcheckbox_3))
-            self.logger.debug("Got coincidence configurations: %i %i %i %i" %(self.coincidencecheckbox_0,self.coincidencecheckbox_1,self.coincidencecheckbox_2,self.coincidencecheckbox_3))
-            self.logger.debug("Got veto configurations: %i %i %i %i" %(self.vetocheckbox,self.vetocheckbox_0,self.vetocheckbox_1,self.vetocheckbox_2))
-
-            # self.logger.debug('Coincidence timewindow %d ns' %
-            #                   get_setting("coincidence_time"))
-            # self.logger.debug("Got channel configurations: %d %d %d %d" %
-            #                   tuple([get_setting("active_ch%d" % i)
-            #                          for i in range(4)]))
-            # self.logger.debug("Got coincidence configurations: %d %d %d %d" %
-            #                   tuple([get_setting("coincidence%d" % i)
-            #                          for i in range(4)]))
-            # self.logger.debug("Got veto configurations: %d %d %d %d" %
-            #                   tuple([get_setting("veto")] +
-            #                         [get_setting("veto_ch%d" % i)
-            #                          for i in range(3)]))
+            self.logger.debug('gate width timew indow %d ns' %
+                              get_setting("gate_width"))
+            self.logger.debug("Got channel configurations: %d %d %d %d" %
+                              tuple([get_setting("active_ch%d" % i)
+                                     for i in range(4)]))
+            self.logger.debug("Got coincidence configurations: %d %d %d %d" %
+                              tuple([get_setting("coincidence%d" % i)
+                                     for i in range(4)]))
+            self.logger.debug("Got veto configurations: %d %d %d %d" %
+                              tuple([get_setting("veto")] +
+                                    [get_setting("veto_ch%d" % i)
+                                     for i in range(3)]))
 
             return True
         else:
             return False
 
-    # this functions gets everything out of the daq
-    # All calculations should happen here
     def process_incoming(self):
         """
-        Handle all the messages currently in the daq 
-        and pass the result to the corresponding widgets
+        This functions gets everything out of the daq.
+
+        Handles all the messages currently in the daq
+        and passes the results to the corresponding widgets.
+
+        :returns: None
         """
         while self.daq.data_available():
-
             try:
                 msg = self.daq.get(0)
             except DAQIOError:
                 self.logger.debug("Queue empty!")
                 return None
 
-            self.daq_msg = msg #make it public for daughters
-            # Check contents of message and do what it says         
-            daq_widget = get_widget("daq")
-            daq_widget.update()
-            
-            gps_widget = get_widget("gps")
+            # make daq msg public for child widgets
+            self.last_daq_msg = msg
 
-            if (gps_widget.active() and
-                    gps_widget.isEnabled()):
-                if len(gps_widget.gps_dump) <= gps_widget.GPS_DUMP_LENGTH:
-                    gps_widget.gps_dump.append(msg)
-                if len(gps_widget.gps_dump) == gps_widget.GPS_DUMP_LENGTH:
-                    gps_widget.update()
+            # Check contents of message and do what it says
+            self.get_widget("daq").update()
+            
+            gps_widget = self.get_widget("gps")
+
+            # try to extract GPS information if widget is active and enabled
+            if gps_widget.active() and gps_widget.isEnabled():
+                gps_widget.update()
                 continue
                 
-            status_widget = get_widget("status")
+            status_widget = self.get_widget("status")
 
+            # update status widget if active
             if status_widget.isVisible() and status_widget.active():
                 status_widget.update()
 
-            decay_widget = get_widget("decay")
+            decay_widget = self.get_widget("decay")
 
+            # update previous coincidence config on decay widget if active
             if msg.startswith('DC') and len(msg) > 2 and decay_widget.active():
                 try:
                     split_msg = msg.split(" ")
-                    decay_widget.previous_coinc_time_03 = split_msg[4].split("=")[1]
-                    decay_widget.previous_coinc_time_02 = split_msg[3].split("=")[1]
-                except:
+                    t_03 = split_msg[4].split("=")[1]
+                    t_02 = split_msg[3].split("=")[1]
+                    decay_widget.set_previous_coincidence_times(t_03, t_02)
+                except Exception:
                     self.logger.debug('Wrong DC command.')
                 continue
 
             # check for threshold information
-            if self.get_thresholds_from_queue(msg):
+            if self.get_thresholds_from_msg(msg):
                 continue
 
-            if self.get_channels_from_queue(msg):
+            # check for channel configuration
+            if self.get_channels_from_msg(msg):
                 continue
 
-            # status messages
+            # ignore status messages
             if msg.startswith('ST') or len(msg) < 50:
                 continue
 
-            rate_widget = get_widget("rate")
-
-            if rate_widget.calculate():
+            # calculate rate
+            if self.get_widget("rate").calculate():
                 continue
 
-            pulse_widget = get_widget("pulse")
-            velocity_widget = get_widget("velocity")
-            
-            if (decay_widget.active() or pulse_widget.active() or
-                    self.pulsefilename or velocity_widget.active()):
-                self.pulses = self.pulseextractor.extract(msg)
+            # extract pulses if needed
+            if (get_setting("write_pulses") or
+                    self.is_widget_active("pulse") or
+                    self.is_widget_active("decay") or
+                    self.is_widget_active("velocity")):
+                self.pulses = self.pulse_extractor.extract(msg)
 
-            self.widget_calculate()
+            # trigger calculation on all pulse widgets
+            self.calculate_pulses()
 
-    def widget_calculate(self):
+    def calculate_pulses(self):
         """
-        Starts the widgets calculate function inside the processIncoming.
-        Set active flag (second parameter in the calculate_widgets list) to
-        True if it should run only when the widget is active.
+        Runs the calculate function of pulse widgets if they are active
+        and pulses are available.
+
+        :returns: None
         """
         for widget in self.pulse_widgets:
             if widget.active() and (self.pulses is not None):
-                widget.calculate()
+                widget.calculate(self.pulses)
 
-    def widget_update(self):
+    def update_dynamic(self):
         """
-        Update the widgets
+        Update dynamic widgets.
+
+        :returns: None
         """
         for widget in self.dynamic_widgets:
             if widget.active():
@@ -771,74 +794,46 @@ class Application(QtGui.QMainWindow):
 
     def closeEvent(self, ev):
         """
-        Is triggered when the window is closed, we have to reimplement it
-        to provide our special needs for the case the program is ended.
-        """
+        Is triggered when it is attempted to close the application.
+        Will perform some cleanup before closing.
 
-        self.logger.info('Attempting to close Window!')
+        :param ev: event
+        :type ev: QtGui.QCloseEvent
+        :returns: None
+        """
+        self.logger.info("Attempting to close application")
+
         # ask kindly if the user is really sure if she/he wants to exit
-        reply = QtGui.QMessageBox.question(self, 'Attention!',
-                'Do you really want to exit?', QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+        reply = QtGui.QMessageBox.question(self, "Attention!",
+                                           "Do you really want to exit?",
+                                           QtGui.QMessageBox.Yes,
+                                           QtGui.QMessageBox.No)
 
         if reply == QtGui.QMessageBox.Yes:
             self.timer.stop()
             self.widget_updater.stop()
-            now = datetime.datetime.now()
 
-            # close the RAW file (if any)
-            if self.tab_widget.daqwidget.write_raw_file:
-                self.tab_widget.daqwidget.write_raw_file = False
-                mtime = now - self.raw_mes_start
-                mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
-                self.logger.info("The raw data was written for %f hours" % mtime)
-                newrawfilename = self.rawfilename.replace("HOURS",str(mtime))
-                shutil.move(self.rawfilename,newrawfilename)
-                self.tab_widget.daqwidget.output_file.close()
+            for key, widget in self._widgets.items():
+                # run finish hook on each widget, e.g. close and
+                # rename files if necessary
+                widget.finish()
 
-            if self.tab_widget.decaywidget.active():
-                mtime = now - self.tab_widget.decaywidget.measurement_start
-                mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
-                self.logger.info("The muon decay measurement was active for %f hours" % mtime)
-                newmufilename = self.decayfilename.replace("HOURS",str(mtime))
-                shutil.move(self.decayfilename,newmufilename)
+            # run finish hook on pulse extractor to close and
+            # rename pulse file
+            self.pulse_extractor.finish()
 
-            if self.pulsefilename:
-                old_pulsefilename = self.pulsefilename
-                # no pulses shall be extracted any more, 
-                # this means changing lots of switches
-                self.pulsefilename = False
-                self.showpulses = False
-                self.pulseextractor.close_file()
-                mtime = now - self.pulse_mes_start
-                mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
-                self.logger.info("The pulse extraction measurement was active for %f hours" % mtime)
-                newpulsefilename = old_pulsefilename.replace("HOURS",str(mtime))
-                shutil.move(old_pulsefilename,newpulsefilename)
-
-            try:
-                self.tab_widget.ratewidget.data_file_write = False
-                self.tab_widget.ratewidget.data_file.close()
-            except (AttributeError, IOError):
-                pass
-            
-            mtime = now - self.tab_widget.ratewidget.measurement_start
-            #print 'HOURS ', now, '|', mtime, '|', mtime.days, '|', str(mtime)                
-            mtime = round(mtime.seconds/(3600.),2) + mtime.days*24
-            #print 'new mtime ', mtime, str(mtime)
-            self.logger.info("The rate measurement was active for %f hours" % mtime)
-            newratefilename = self.filename.replace("HOURS",str(mtime))
-            #print 'new raw name', newratefilename
-            shutil.move(self.filename,newratefilename)
             time.sleep(0.5)
-            self.tab_widget.writefile = False
-            try:
-                self.tab_widget.decaywidget.mu_file.close()
- 
-            except AttributeError:
-                pass
 
             self.emit(QtCore.SIGNAL('lastWindowClosed()'))
             self.close()
-
-        else: # don't close the mainwindow
+        else:
+            # don't close the application
             ev.ignore()
+
+
+class WidgetWithNameExistsError(Exception):
+    """
+    Exception that gets raised if it is attempted to overwrite a
+    widget reference that already exists.
+    """
+    pass

@@ -21,7 +21,11 @@ _default_settings = {
     "coincidence0": True,
     "coincidence1": False,
     "coincidence2": False,
-    "coincidence3": False
+    "coincidence3": False,
+    "threshold_ch0": 300,
+    "threshold_ch1": 300,
+    "threshold_ch2": 300,
+    "threshold_ch3": 300
 }
 
 _settings = dict()

@@ -661,12 +661,12 @@ class Application(QtGui.QMainWindow):
 
             update_setting("gate_width", int(coincidence_time, 16) * 10)
 
-            # set default veto checkboxes
+            # set default veto config
             for i in range(4):
                 if i == 0:
                     update_setting("veto", True)
                 else:
-                    update_setting("veto_ch%d" % i, False)
+                    update_setting("veto_ch%d" % (i - 1), False)
 
             # update channel config
             for i in range(4):
@@ -684,7 +684,7 @@ class Application(QtGui.QMainWindow):
                     if i == 0:
                         update_setting("veto", False)
                     else:
-                        update_setting("veto_ch%d" % i, True)
+                        update_setting("veto_ch%d" % (i - 1), True)
 
             self.logger.debug('gate width timew indow %d ns' %
                               get_setting("gate_width"))

@@ -817,7 +817,7 @@ class Application(QtGui.QMainWindow):
         # ask kindly if the user is really sure if she/he wants to exit
         reply = QtGui.QMessageBox.question(self, "Attention!",
                                            "Do you really want to exit?",
-                                           QtGui.QMessageBox.Yes,
+                                           QtGui.QMessageBox.Yes |
                                            QtGui.QMessageBox.No)
 
         if reply == QtGui.QMessageBox.Yes:
@@ -836,7 +836,7 @@ class Application(QtGui.QMainWindow):
             time.sleep(0.5)
 
             self.emit(QtCore.SIGNAL('lastWindowClosed()'))
-            self.close()
+            ev.accept()
         else:
             # don't close the application
             ev.ignore()

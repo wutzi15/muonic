@@ -446,7 +446,11 @@ class ScalarsCanvas(BasePlotCanvas):
                  max(self.trigger_data))
             
         self.ax.set_ylim(0, ma * 1.1)
-        self.ax.set_xlim(self.time_data[0], self.time_data[-1])
+
+        # do not set x-range if time_data consists of only one item to
+        # avoid matlibplot UserWarning
+        if len(self.time_data) > 1:
+            self.ax.set_xlim(self.time_data[0], self.time_data[-1])
 
         self.fig.canvas.draw()
 

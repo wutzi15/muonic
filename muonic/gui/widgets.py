@@ -848,7 +848,7 @@ class StatusWidget(BaseWidget):
         for i in range(4):
             self.daq_stats['active_channels'][i] = \
                 get_setting("active_ch%d" % i)
-            self.daq_stats['thresholds'][1] = \
+            self.daq_stats['thresholds'][i] = \
                 ("%d mV" % get_setting("threshold_ch%d" % i))
 
         if get_setting("veto"):

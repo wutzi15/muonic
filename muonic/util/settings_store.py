@@ -3,7 +3,8 @@ Global application settings store
 """
 
 __all__ = ["update_setting", "have_setting", "get_setting",
-           "remove_setting", "update_settings", "apply_default_settings"]
+           "remove_setting", "update_settings",
+           "apply_default_settings", "dump_settings"]
 
 _default_settings = {
     "write_pulses": False,
@@ -127,3 +128,13 @@ def apply_default_settings(clear=False):
     :returns: None
     """
     update_settings(_default_settings, clear)
+
+
+def dump_settings():
+    """
+    Prints the current settings.
+
+    :returns: None
+    """
+    for key, value in sorted(_settings.items()):
+        print("%-20s = %s" % (key, value))

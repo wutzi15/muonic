@@ -852,12 +852,9 @@ class StatusWidget(BaseWidget):
                 ("%d mV" % get_setting("threshold_ch%d" % i))
 
         if get_setting("veto"):
-            if get_setting("veto_ch0"):
-                self.daq_stats['veto'] = 'veto with channel 0'
-            if get_setting("veto_ch1"):
-                self.daq_stats['veto'] = 'veto with channel 1'
-            if get_setting("veto_ch2"):
-                self.daq_stats['veto'] = 'veto with channel 2'
+            for i in range(3):
+                if get_setting("veto_ch%d" % i):
+                    self.daq_stats['veto'] = "veto with channel %d" % i
         else:
             self.daq_stats['veto'] = 'no veto set'
 
@@ -872,14 +869,10 @@ class StatusWidget(BaseWidget):
         self.daq_stats['coincidence_time'] = ("%d ns" %
                                               get_setting("gate_width"))
 
-        if get_setting("coincidence0"):
-            self.daq_stats['coincidences'] = "Single Coincidence"
-        elif get_setting("coincidence1"):
-            self.daq_stats['coincidences'] = "Twofold Coincidence"
-        elif get_setting("coincidence2"):
-            self.daq_stats['coincidences'] = "Threefold Coincidence"
-        elif get_setting("coincidence3"):
-            self.daq_stats['coincidences'] = "Fourfold Coincidence"
+        for i, value in enumerate(["Single", "Twofold", "Threefold",
+                                   "Fourfold"]):
+            if get_setting("coincidence%d" % i):
+                self.daq_stats['coincidences'] = "%s Coincidence" % value
 
     def _update_muonic_stats(self):
         """
@@ -888,14 +881,13 @@ class StatusWidget(BaseWidget):
         :returns: None
         """
         measurements = []
-        if self.parent.is_widget_active("rate"):
-            measurements.append("Muon Rates")
-        if self.parent.is_widget_active("decay"):
-            measurements.append("Muon Decay")
-        if self.parent.is_widget_active("velocity"):
-            measurements.append("Muon Velocity")
-        if self.parent.is_widget_active("pulse"):
-            measurements.append("Pulse Analyzer")
+
+        for name, title in [("rate", "Muon Rates"),
+                            ("decay", "Muon Decay"),
+                            ("velocity", "Muon Velocity"),
+                            ("pulse", "Pulse Analyzer")]:
+            if self.parent.is_widget_active(name):
+                measurements.append(title)
 
         self.muonic_stats['measurements'] = ", ".join(measurements)
         self.muonic_stats['refresh_time'] = ("%f s" %

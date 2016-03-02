@@ -1,7 +1,7 @@
 """
 Provide the different physics widgets
 """
-from __future__ import print_function
+from __future__ import print_function, with_statement
 import datetime
 import time
 

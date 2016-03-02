@@ -106,7 +106,7 @@ def format_date(date, fmt="%Y-%m-%d_%H-%M-%S"):
 
 class WrappedFile(object):
     """
-    A file wrapper which tracks open files.
+    A file wrapper which keeps track of open files.
 
     Raises ValueError if filename is None.
 
@@ -118,7 +118,7 @@ class WrappedFile(object):
 
     def __init__(self, filename):
         if filename is None:
-            raise ValueError("filename is 'None'")
+            raise ValueError("filename cannot be of 'NoneType'")
 
         self._filename = filename
         self._file = None
@@ -141,7 +141,7 @@ class WrappedFile(object):
         """
         self._file = open(self._filename, mode)
         WrappedFile.open_files.add(self._filename)
-        return self._file
+        return self
 
     @property
     def closed(self):
@@ -158,10 +158,13 @@ class WrappedFile(object):
         """
         Close file and un-track it.
 
+        Raises IOError if file is not open.
+
+        :raises: IOError
         :returns: None
         """
         if self._file is None:
-            raise IOError("file '%s' is not open" % self.file_name)
+            raise IOError("file '%s' is not open" % self._filename)
         self._file.close()
         self._file = None
         WrappedFile.open_files.remove(self._filename)
@@ -174,10 +177,19 @@ class WrappedFile(object):
         """
         return self._file
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         """
-        Close file on leaving 'with' block
+        Close file on leaving 'with' block.
 
+        Exit the runtime context related to this object. The parameters
+        describe the exception that caused the context to be exited. If
+        the context was exited without an exception, all three arguments
+        will be None.
+
+        :param exc_type: type of the Exception that caused the
+        context to be exited
+        :param exc_value: value of the Exception
+        :param traceback: traceback, if any
         :returns: None
         """
         self.close()
@@ -186,12 +198,15 @@ class WrappedFile(object):
         """
         Proxy all other attributes of file.
 
+        Raises IOError if file is not open.
+
         :param attr: attribute name
         :type attr: str
+        :raises: IOError
         :returns: mixed
         """
         if self._file is None:
-            raise IOError("file '%s' is not open" % self.file_name)
+            raise IOError("file '%s' is not open" % self._filename)
         return getattr(self._file, attr)
 
     def __repr__(self):
@@ -207,6 +222,6 @@ class WrappedFile(object):
         """
         Get all open files.
 
-        :returns: list of str
+        :returns: set of str
         """
         return WrappedFile.open_files

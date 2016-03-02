@@ -99,21 +99,7 @@ class Application(QtGui.QMainWindow):
             self.pulse_extractor.write_pulses(True)
 
         # create tabbed widgets
-        self.add_widget("rate", "Muon Rates",
-                        RateWidget(logger, self.rate_filename, parent=self))
-        self.add_widget("pulse", "Pulse Analyzer",
-                        PulseAnalyzerWidget(logger, self.pulse_extractor,
-                                            parent=self))
-        self.add_widget("decay", "Muon Decay",
-                        DecayWidget(logger, self.decay_filename,
-                                    self.pulse_extractor, parent=self))
-        self.add_widget("velocity", "Muon Velocity",
-                        VelocityWidget(logger, self.pulse_extractor,
-                                       parent=self))
-        self.add_widget("status", "Status", StatusWidget(logger, parent=self))
-        self.add_widget("daq", "DAQ Output",
-                        DAQWidget(logger, self.raw_filename, parent=self))
-        self.add_widget("gps", "GPS Output", GPSWidget(logger, parent=self))
+        self.setup_tab_widgets()
 
         self.setCentralWidget(self.tab_widget)
 
@@ -186,6 +172,31 @@ class Application(QtGui.QMainWindow):
 
             except DAQIOError:
                 self.logger.debug("Queue empty!")
+
+    def setup_tab_widgets(self):
+        """
+        Creates the widgets and adds tabs
+
+        :returns: None
+        """
+        self.add_widget("rate", "Muon Rates",
+                        RateWidget(self.logger, self.rate_filename,
+                                   parent=self))
+        self.add_widget("pulse", "Pulse Analyzer",
+                        PulseAnalyzerWidget(self.logger, self.pulse_extractor,
+                                            parent=self))
+        self.add_widget("decay", "Muon Decay",
+                        DecayWidget(self.logger, self.decay_filename,
+                                    self.pulse_extractor, parent=self))
+        self.add_widget("velocity", "Muon Velocity",
+                        VelocityWidget(self.logger, self.pulse_extractor,
+                                       parent=self))
+        self.add_widget("status", "Status",
+                        StatusWidget(self.logger, parent=self))
+        self.add_widget("daq", "DAQ Output",
+                        DAQWidget(self.logger, self.raw_filename, parent=self))
+        self.add_widget("gps", "GPS Output",
+                        GPSWidget(self.logger, parent=self))
 
     def setup_plot_style(self):
         """

@@ -1,6 +1,7 @@
 """
 Global application settings store
 """
+from __future__ import print_function
 
 __all__ = ["update_setting", "have_setting", "get_setting",
            "remove_setting", "update_settings",

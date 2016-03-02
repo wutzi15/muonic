@@ -33,7 +33,8 @@ class BaseDialog(QtGui.QDialog):
 
         if widget is not None:
             if (isinstance(widget, QtGui.QRadioButton) or
-                    isinstance(widget, QtGui.QCheckBox)):
+                    isinstance(widget, QtGui.QCheckBox) or
+                    isinstance(widget, QtGui.QGroupBox)):
                 return widget.isChecked()
             elif (isinstance(widget, QtGui.QSpinBox) or
                     isinstance(widget, QtGui.QDoubleSpinBox)):
@@ -386,6 +387,8 @@ class ConfigDialog(BaseDialog):
                 self.choice_group(radio=True, label="Veto",
                                   checkable=True, checked=veto_enabled,
                                   object_name="veto_checkbox",
+
+
                                   checked_items=checked_channel_vetos,
                                   item_labels=["Chan1", "Chan2", "Chan3"],
                                   left=180), 0, 2)

@@ -1,8 +1,9 @@
 """
 Provide the different physics widgets
 """
-from __future__ import print_function, with_statement
+from __future__ import print_function
 import datetime
+import os
 import time
 
 try:
@@ -168,12 +169,15 @@ class RateWidget(BaseWidget):
         self.max_rate = 0
         self.min_rate = 0
 
+        # we will write the column headers of the data into
+        # data_file in the first run
+        self.first_run = True
+
         # are we in first cycle after start button is pressed?
         self.first_cycle = False
 
         # data file options
         self.data_file = WrappedFile(filename)
-        self.setup_data_file()
 
         # rates store
         self.rates = None
@@ -275,16 +279,6 @@ class RateWidget(BaseWidget):
         layout.addWidget(value_box, 0, 2)
         layout.addWidget(plot_box, 0, 0, 1, 2)
         layout.addWidget(bottom_line_box, 4, 0, 1, 3)
-
-    def setup_data_file(self):
-        """
-        Write column headers to data file
-        :return: None
-        """
-        # FIXME: take filename as argument in __init__
-        with self.data_file.open("w") as f:
-            f.write("chan0 | chan1 | chan2 | chan3 | " +
-                    "R0 | R1 | R2 | R3 | trigger | Delta_time\n")
 
     def query_daq_for_scalars(self):
         """
@@ -487,6 +481,16 @@ class RateWidget(BaseWidget):
         # reset scalar buffer
         self.scalar_buffer = self.new_scalar_buffer()
 
+        # open file for writing and add comment
+        self.data_file.open("a")
+
+        # write column headers if this is the first run
+        if self.first_run:
+            self.data_file.write("chan0 | chan1 | chan2 | chan3 | " +
+                                 "R0 | R1 | R2 | R3 | " +
+                                 "trigger | Delta_time\n")
+            self.first_run = False
+
         # determine type of measurement
         if self.parent.is_widget_active("decay"):
             measurement_type = "rate+decay"
@@ -495,8 +499,6 @@ class RateWidget(BaseWidget):
         else:
             measurement_type = "rate"
 
-        # open file for writing and add comment
-        self.data_file.open("a")
         self.data_file.write("# new %s measurement run from: %s\n" %
                              (measurement_type,
                               self.start_time.strftime("%Y-%m-%d_%H-%M-%S")))
@@ -563,13 +565,17 @@ class RateWidget(BaseWidget):
                                  stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
             self.data_file.close()
 
-        self.logger.info("The rate measurement was active for %f hours" %
-                         get_hours_from_duration(self.measurement_duration))
-        try:
-            rename_muonic_file(self.measurement_duration,
-                               self.data_file.get_filename())
-        except (OSError, IOError):
-            pass
+        # only rename if file actually exists
+        if os.path.exists(self.data_file.get_filename()):
+            try:
+                self.logger.info(("The rate measurement was active " +
+                                  "for %f hours") %
+                                 get_hours_from_duration(
+                                         self.measurement_duration))
+                rename_muonic_file(self.measurement_duration,
+                                   self.data_file.get_filename())
+            except (OSError, IOError):
+                pass
 
 
 class PulseAnalyzerWidget(BaseWidget):
@@ -1525,15 +1531,17 @@ class DecayWidget(BaseWidget):
                                stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
             self.mu_file.close()
 
-        self.logger.info("The muon decay measurement was " +
-                         "active for %f hours" %
-                         get_hours_from_duration(self.measurement_duration))
-
-        try:
-            rename_muonic_file(self.measurement_duration,
-                               self.mu_file.get_filename())
-        except (OSError, IOError):
-            pass
+        # only rename if file actually exists
+        if os.path.exists(self.mu_file.get_filename()):
+            try:
+                self.logger.info(("The muon decay measurement was " +
+                                  "active for %f hours") %
+                                 get_hours_from_duration(
+                                         self.measurement_duration))
+                rename_muonic_file(self.measurement_duration,
+                                   self.mu_file.get_filename())
+            except (OSError, IOError):
+                pass
 
 
 class DAQWidget(BaseWidget):
@@ -1744,14 +1752,16 @@ class DAQWidget(BaseWidget):
                                    stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
             self.output_file.close()
 
-        self.logger.info("The raw data was written for %f hours" %
-                         get_hours_from_duration(self.measurement_duration))
-
-        try:
-            rename_muonic_file(self.measurement_duration,
-                               self.output_file.get_filename())
-        except (OSError, IOError):
-            pass
+        # only rename if file actually exists
+        if os.path.exists(self.output_file.get_filename()):
+            try:
+                self.logger.info("The raw data was written for %f hours" %
+                                 get_hours_from_duration(
+                                         self.measurement_duration))
+                rename_muonic_file(self.measurement_duration,
+                                   self.output_file.get_filename())
+            except (OSError, IOError):
+                pass
 
 
 class GPSWidget(BaseWidget):

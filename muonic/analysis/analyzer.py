@@ -4,6 +4,7 @@ Calculate also a non hex representation of leading and falling
 edges of the pulses.
 """
 import datetime
+import os
 
 from muonic.util import rename_muonic_file, get_hours_from_duration
 from muonic.util import WrappedFile
@@ -123,15 +124,17 @@ class PulseExtractor:
             self.measurement_duration += stop_time - self.start_time
             self.pulse_file.close()
 
-        self.logger.info("The pulse extraction measurement was " +
-                         "active for %f hours" %
-                         get_hours_from_duration(self.measurement_duration))
-
-        try:
-            rename_muonic_file(self.measurement_duration,
-                               self.pulse_file.get_filename())
-        except (OSError, IOError):
-            pass
+        # only rename if file actually exists
+        if os.path.exists(self.pulse_file.get_filename()):
+            try:
+                self.logger.info(("The pulse extraction measurement was " +
+                                  "active for %f hours") %
+                                 get_hours_from_duration(
+                                         self.measurement_duration))
+                rename_muonic_file(self.measurement_duration,
+                                   self.pulse_file.get_filename())
+            except (OSError, IOError):
+                pass
 
     def _calculate_edges(self, line, counter_diff=0):
         """

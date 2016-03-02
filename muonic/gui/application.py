@@ -146,7 +146,7 @@ class Application(QtGui.QMainWindow):
 
         self.logger.info("Time window is %4.2f" % opts.time_window)
 
-        self.setup_screen()
+        self.setup_plot_style()
         self.setup_menus()
         self.process_incoming()
 
@@ -187,7 +187,7 @@ class Application(QtGui.QMainWindow):
             except DAQIOError:
                 self.logger.debug("Queue empty!")
 
-    def setup_screen(self):
+    def setup_plot_style(self):
         """
         Setup the plot style depending on screen size.
 

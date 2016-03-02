@@ -1,5 +1,5 @@
 try:
-   from muonic.analysis.fit import main
+   from muonic.analysis.fit import fit
 except ImportError:
    import os.path
    muonic_path = os.path.abspath('../../muonic')
@@ -8,7 +8,7 @@ except ImportError:
    else:
        import sys
        sys.path.append(muonic_path)   
-       from muonic.analysis.fit import main
+       from muonic.analysis.fit import fit
 
-main()
+fit()
 

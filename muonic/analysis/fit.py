@@ -10,7 +10,7 @@ import numpy
 import scipy.optimize as optimize
 
 
-def main(bincontent=None, binning=(0, 10, 21), fitrange=None):
+def fit(bincontent=None, binning=(0, 10, 21), fitrange=None):
     """
     Fit function
 
@@ -281,4 +281,4 @@ def gaussian_fit(bincontent, binning=(0, 2, 10), fitrange=None):
      
 
 if __name__ == '__main__':
-    main()
+    fit()

@@ -80,14 +80,12 @@ def main(bincontent=None):
          
 
         date = datetime.datetime.now()
-        pylab.savefig(os.path.join(datapath,"muon_lifetime_%s.png" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))))
+        pylab.savefig(os.path.join(datapath,"muon_lifetime_%s.png" %(date.strftime('%Y-%m-%d_%H-%M-%S'))))
 
-        pylab.savefig(os.path.join(datapath,"muon_lifetime_%s.pdf" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))))
+        pylab.savefig(os.path.join(datapath,"muon_lifetime_%s.pdf" %(date.strftime('%Y-%m-%d_%H-%M-%S'))))
 
         #FIXME: should think about invoking p.show() here...
-        p=Popen("eog " + os.path.join(datapath,"muon_lifetime%s.png" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))), shell=True) 
-       
-
+        #p=Popen("eog " + os.path.join(datapath,"muon_lifetime%s.png" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))), shell=True)
     else:
 
         # this is then used for the mudecaywindow

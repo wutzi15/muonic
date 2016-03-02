@@ -73,11 +73,9 @@ def main(bincontent=None):
 
 
         date = datetime.datetime.now()
-        pylab.savefig(os.path.join(datapath,"muon_velocity_%s.png" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))))
-        pylab.savefig(os.path.join(datapath,"muon_velocity_%s.pdf" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))))
-        p=Popen("eog " + os.path.join(datapath,"muon_velocity%s.png" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))), shell=True) 
-
-   
+        pylab.savefig(os.path.join(datapath,"muon_velocity_%s.png" %(date.strftime('%Y-%m-%d_%H-%M-%S'))))
+        pylab.savefig(os.path.join(datapath,"muon_velocity_%s.pdf" %(date.strftime('%Y-%m-%d_%H-%M-%S'))))
+        #p=Popen("eog " + os.path.join(datapath,"muon_velocity%s.png" %(%date.strftime('%Y-%m-%d_%H-%M-%S'))), shell=True)
     else:
 
     

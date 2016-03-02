@@ -1,36 +1,41 @@
-#  script to convert daq raw files to muonic pulsefiles
+# script to convert daq raw files to muonic pulse files
 #
-# output format (relative time,[(re0_channel0,fe0_channel0),(re1_channel0,fe1_channel0),...],[(..],[..],[..])
-# -> each channel is represented by a list of leading/falling edge tuples of the recorded pulses
+# output format (relative time, [(re0_channel0,fe0_channel0),
+#                                (re1_channel0,fe1_channel0),...],
+#                               [(..],[..],[..])
+# -> each channel is represented by a list of leading/falling edge
+#    tuples of the recorded pulses
 #
-#
-
-import sys
+from __future__ import print_function
+import logging
 import re
+import sys
 
 from muonic.analysis.analyzer import PulseExtractor
 
-pe = PulseExtractor()
 
-f = open(sys.argv[1])
+def daq_converter():
+    pe = PulseExtractor(logging.getLogger(), '')
 
-converted_file = open("converted.txt","w")
+    f = open(sys.argv[1])
 
-goodpattern = re.compile("^[a-zA-Z0-9+-.,:()=$/#?!%_@*|~' ]*[\n\r]*$") # match against this to supress daq garbage
+    converted_file = open("converted.txt", "w")
 
-for line in f.readlines():
-    if goodpattern.match(line) is None:
-        continue
+    # match against this to supress daq garbage
+    good_pattern = re.compile("^[a-zA-Z0-9+-.,:()=$/#?!%_@*|~' ]*[\n\r]*$")
 
-    try:
-        pulses = pe.extract(line)
-    except Exception as e:
-        print line,"Failed to convert",e
-        continue
+    for line in f.readlines():
+        if good_pattern.match(line) is None:
+            continue
+        try:
+            pulses = pe.extract(line)
+        except Exception as e:
+            print(line, "Failed to convert", e)
+            continue
+
+        if pulses is not None:
+            converted_file.write(pulses.__repr__() + "\n")
     
-    if pulses is not None:
-        converted_file.write(pulses.__repr__() + "\n")
-    
 
-
-
+if __name__ == "__main__":
+    daq_converter()

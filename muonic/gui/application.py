@@ -389,7 +389,7 @@ class Application(QtGui.QMainWindow):
         :returns: None
         """
         # get the actual channels from the DAQ card
-        self.daq.put('DC')
+        self.daq.put("DC")
 
         # wait explicitly until the channels get loaded
         self.logger.info("loading channel information...")
@@ -406,93 +406,88 @@ class Application(QtGui.QMainWindow):
         dialog = ConfigDialog(channel_config, coincidence_config,
                               veto, veto_config)
 
-        # FIXME: rewrite!
         if dialog.exec_() == 1:
-            chan0_active = dialog.get_widget_value("channel_checkbox_0")
-            chan1_active = dialog.get_widget_value("channel_checkbox_1")
-            chan2_active = dialog.get_widget_value("channel_checkbox_2")
-            chan3_active = dialog.get_widget_value("channel_checkbox_3")
 
-            singles = dialog.get_widget_value("coincidence_checkbox_0")
-            twofold = dialog.get_widget_value("coincidence_checkbox_1")
-            threefold = dialog.get_widget_value("coincidence_checkbox_2")
-            fourfold = dialog.get_widget_value("coincidence_checkbox_3")
+            # get and update channel and coincidence config
+            for i in range(4):
+                channel_config[i] = dialog.get_widget_value(
+                        "channel_checkbox_%d" % i)
+                coincidence_config[i] = dialog.get_widget_value(
+                        "coincidence_checkbox_%d" % i)
 
+                update_setting("active_ch%d" % i, channel_config[i])
+                update_setting("coincidence%d" % i, coincidence_config[i])
+
+            # get and update veto state
             veto = dialog.get_widget_value("veto_checkbox")
-            vetochan1 = dialog.get_widget_value("veto_checkbox_0")
-            vetochan2 = dialog.get_widget_value("veto_checkbox_1")
-            vetochan3 = dialog.get_widget_value("veto_checkbox_2")
-            
-            tmp_msg = ''
+            update_setting("veto", veto)
+
+            # get and update veto channel config
+            for i in range(3):
+                veto_config[i] = dialog.get_widget_value(
+                        "veto_checkbox_%d" % i)
+
+                update_setting("veto_ch%d" % i, veto_config[i])
+
+            # build daq message to apply the new config to the card
+            tmp_msg = ""
 
             if veto:
-                if vetochan1:
-                    tmp_msg += '01'
-                elif vetochan2:
-                    tmp_msg += '10'
-                elif vetochan3:
-                    tmp_msg += '11'
+                if veto_config[0]:
+                    tmp_msg += "01"
+                elif veto_config[1]:
+                    tmp_msg += "10"
+                elif veto_config[2]:
+                    tmp_msg += "11"
                 else:
-                    tmp_msg += '00' 
+                    tmp_msg += "00"
             else:
-                tmp_msg += '00'
-
-            update_setting("veto", veto)
-            update_setting("veto_ch0", vetochan1)
-            update_setting("veto_ch1", vetochan2)
-            update_setting("veto_ch2", vetochan3)
+                tmp_msg += "00"
 
             coincidence_set = False
-            for coincidence in [(singles, '00'), (twofold, '01'), (threefold, '10'), (fourfold, '11')]:
-                if coincidence[0]:
-                    tmp_msg += coincidence[1]
-                    coincidence_set = True
-            
-            # else case, just in case
-            if not coincidence_set:
-                tmp_msg += '00'
 
-            update_setting("coincidence0", singles)
-            update_setting("coincidence1", twofold)
-            update_setting("coincidence2", threefold)
-            update_setting("coincidence3", fourfold)
+            # singles, twofold, threefold, fourfold
+            for i, coincidence in enumerate(["00", "01", "10", "11"]):
+                if coincidence_config[i]:
+                    tmp_msg += coincidence
+                    coincidence_set = True
+
+            if not coincidence_set:
+                tmp_msg += "00"
     
             # now calculate the correct expression for the first
             # four bits
             self.logger.debug("The first four bits are set to %s" % tmp_msg)
-            msg = 'WC 00 ' + hex(int(''.join(tmp_msg), 2))[-1].capitalize()
+            msg = "WC 00 %s" % hex(int(''.join(tmp_msg), 2))[-1].capitalize()
     
             channel_set = False
             enable = ['0', '0', '0', '0']
-            for channel in enumerate([chan3_active, chan2_active, chan1_active, chan0_active]):
-                if channel[1]:
-                    enable[channel[0]] = '1'
+
+            for i, active in enumerate(reversed(channel_config)):
+                if active:
+                    enable[i] = '1'
                     channel_set = True
             
-            if not channel_set:
-                msg += '0'
-                
-            else:
+            if channel_set:
                 msg += hex(int(''.join(enable), 2))[-1].capitalize()
+            else:
+                msg += '0'
 
-            update_setting("active_ch0", chan0_active)
-            update_setting("active_ch1", chan1_active)
-            update_setting("active_ch2", chan2_active)
-            update_setting("active_ch3", chan3_active)
-            
+            # send the message to the daq card
             self.daq.put(msg)
-            self.logger.info('The following message was sent to DAQ: %s' % msg)
 
-            self.logger.debug('channel0 selected %s' % chan0_active)
-            self.logger.debug('channel1 selected %s' % chan1_active)
-            self.logger.debug('channel2 selected %s' % chan2_active)
-            self.logger.debug('channel3 selected %s' % chan3_active)
-            self.logger.debug('coincidence singles %s' % singles)
-            self.logger.debug('coincidence twofold %s' % twofold)
-            self.logger.debug('coincidence threefold %s' % threefold)
-            self.logger.debug('coincidence fourfold %s' % fourfold)
+            self.logger.info("The following message was sent to DAQ: %s" % msg)
 
-        self.daq.put('DC')
+            for i in range(4):
+                self.logger.debug("channel%d selected %s" %
+                                  (i, channel_config[i]))
+
+            for i, name in enumerate(["singles", "twofold",
+                                      "threefold", "fourfold"]):
+                self.logger.debug("coincidence %s %s" %
+                                  (name, coincidence_config[i]))
+
+        self.daq.put("DC")
            
     def advanced_menu(self):
         """
@@ -503,7 +498,7 @@ class Application(QtGui.QMainWindow):
         :returns: None
         """
         # get the actual channels from the DAQ card
-        self.daq.put('DC')
+        self.daq.put("DC")
 
         # wait explicitly until the channels get loaded
         self.logger.info("loading channel information...")
@@ -545,13 +540,13 @@ class Application(QtGui.QMainWindow):
             # adjust the update interval
             self.widget_updater.start(time_window * 1000)
 
-            self.logger.debug('Writing gate width WC 02 %s WC 03 %s' %
+            self.logger.debug("Writing gate width WC 02 %s WC 03 %s" %
                               (gate_width_02, gate_width_03))
-            self.logger.debug('Setting time window to %.2f ' % time_window)
-            self.logger.debug('Switching write_daq_status option to %s' %
+            self.logger.debug("Setting time window to %.2f " % time_window)
+            self.logger.debug("Switching write_daq_status option to %s" %
                               write_daq_status)
 
-        self.daq.put('DC')
+        self.daq.put("DC")
 
     def help_menu(self):
         """
@@ -658,7 +653,7 @@ class Application(QtGui.QMainWindow):
         if msg.startswith('DC ') and len(msg) > 25:
             msg = msg.split(' ')
 
-            coincidence_time = msg[4].split('=')[1]+ msg[3].split('=')[1]
+            coincidence_time = msg[4].split('=')[1] + msg[3].split('=')[1]
             msg = bin(int(msg[1][3:], 16))[2:].zfill(8)
             veto_config = msg[0:2]
             coincidence_config = msg[2:4]

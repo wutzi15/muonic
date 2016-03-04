@@ -3,6 +3,7 @@ Get the absolute timing of the pulses by use of the gps time
 Calculate also a non hex representation of leading and falling
 edges of the pulses.
 """
+from __future__ import print_function
 import datetime
 import os
 
@@ -302,7 +303,7 @@ class PulseExtractor:
                                 pulses["ch1"], pulses["ch2"], pulses["ch3"])
 
             if self._write_pulses:
-                self.pulse_file.write(extracted_pulses.__repr__() + '\n')
+                self.pulse_file.write(repr(extracted_pulses) + '\n')
 
             # as the pulses for the last event are done,
             # reinitialize data structures
@@ -323,7 +324,7 @@ class PulseExtractor:
                 self.last_one_pps = int(line[9], 16)
             else:
                 counter_diff = (self.trigger_count - self.last_trigger_count)
-                # print counter_diff, counter_diff > int(0xffffffff)
+                # print(counter_diff, counter_diff > int(0xffffffff))
                 # FIXME: is this correct?
                 if counter_diff > int(0xffffffff):
                     counter_diff -= int(0xffffffff)
@@ -441,9 +442,7 @@ class DecayTriggerThorough:
             # reject event if it has to few pulses or veto pulses
             self.logger.debug(("Rejecting decay with single pulses %s, " +
                               "double pulses %s and veto pulses %s") %
-                              (pulses1.__repr__(),
-                               pulses2.__repr__(),
-                               pulses3.__repr__()))
+                              (repr(pulses1), repr(pulses2), repr(pulses3)))
             return None
 
         # muon it might have entered the second channel then we do
@@ -501,9 +500,7 @@ class DecayTriggerThorough:
 
         self.logger.debug(("Rejecting decay with single pulses %s, " +
                           "double pulses %s and veto pulses %s") %
-                          (pulses1.__repr__(),
-                           pulses2.__repr__(),
-                           pulses3.__repr__()))
+                          (repr(pulses1), repr(pulses2), repr(pulses3)))
         return None
 
 
@@ -518,6 +515,6 @@ if __name__ == '__main__':
         if not line:
             break
         try:
-            print extractor.extract(line)
+            print(extractor.extract(line))
         except (ValueError, IndexError):
             pass 

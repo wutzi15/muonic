@@ -308,8 +308,8 @@ class PulseCanvas(BasePlotCanvas):
             try:
                 self.ax.legend(loc=1, ncol=5, mode="expand",
                                borderaxespad=0., handlelength=1)
-            except Exception:
-                self.logger.info("An error with the legend occured!")
+            except Exception as e:
+                self.logger.info("An error with the legend occurred: %s" % e)
                 self.ax.legend(loc=2)
 
             self.fig.canvas.draw()
@@ -426,13 +426,13 @@ class ScalarsCanvas(BasePlotCanvas):
         try:
             # get count of active cannels
             channels = enabled_channels + [show_trigger]
-            active_count = len(filter(lambda x: x is True, channels))
+            active_count = sum(channels)
             
             self.ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                            ncol=active_count, mode="expand", borderaxespad=0.,
                            handlelength=2)
-        except Exception:
-            self.logger.info("An error with the legend occured!")
+        except Exception as e:
+            self.logger.info("An error with the legend occurred: %s" % e)
             self.ax.legend(loc=2)
 
         if len(self.channel_data[0]) > self.max_length:

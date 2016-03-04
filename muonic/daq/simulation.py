@@ -1,15 +1,15 @@
 """
 Provides a simple DAQ card simulation, so that software can be tested.
 """
-
 from __future__ import print_function
 import abc
+from future.utils import with_metaclass
 import logging
 import numpy as np
 from os import path
+import queue
 from random import choice
 import time
-import Queue
 
 try:
     import zmq
@@ -127,7 +127,7 @@ class DAQSimulation(object):
         :type command: str
         :returns: None
         """
-        self.logger.debug("got the following command %s" % command.__repr__())
+        self.logger.debug("got the following command %s" % command)
         if "DS" in command:
             self._return_info = True
 
@@ -146,14 +146,13 @@ class DAQSimulation(object):
             return False
 
 
-class BaseDAQSimulationConnection(object):
+class BaseDAQSimulationConnection(with_metaclass(abc.ABCMeta, object)):
     """
     Base class for a simulated connection to DAQ card.
 
     :param logger: logger object
     :type logger: logging.Logger
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, logger=None):
         if logger is None:
@@ -202,7 +201,7 @@ class DAQSimulationConnection(BaseDAQSimulationConnection):
                     try:
                         self.serial_port.write(str(self.in_queue.get(0)) +
                                                "\r")
-                    except Queue.Empty:
+                    except queue.Empty:
                         self.logger.debug("Queue empty!")
             except NotImplementedError:
                 self.logger.debug("Running Mac version of muonic.")
@@ -210,7 +209,7 @@ class DAQSimulationConnection(BaseDAQSimulationConnection):
                     try:
                         self.serial_port.write(str(self.in_queue.get(
                                 timeout=0.01)) + "\r")
-                    except Queue.Empty:
+                    except queue.Empty:
                         pass
 
             while self.serial_port.in_waiting():

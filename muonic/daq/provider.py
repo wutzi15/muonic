@@ -4,10 +4,11 @@ Provides the public interfaces to read from and send to a DAQ card
 
 from __future__ import print_function
 import abc
+from future.utils import with_metaclass
 import logging
 import multiprocessing as mp
 import re
-import Queue
+import queue
 
 try:
     import zmq
@@ -19,7 +20,7 @@ from muonic.daq import DAQIOError, DAQMissingDependencyError
 from muonic.daq import DAQSimulationConnection, DAQConnection
 
 
-class BaseDAQProvider(object):
+class BaseDAQProvider(with_metaclass(abc.ABCMeta, object)):
     """
     Base class defining the public API and helpers for the
     DAQ provider implementations
@@ -27,7 +28,6 @@ class BaseDAQProvider(object):
     :param logger: logger object
     :type logger: logging.Logger
     """
-    __metaclass__ = abc.ABCMeta
 
     LINE_PATTERN = re.compile("^[a-zA-Z0-9+-.,:()=$/#?!%_@*|~' ]*[\n\r]*$")
 
@@ -133,7 +133,7 @@ class DAQProvider(BaseDAQProvider):
         """
         try:
             line = self.out_queue.get(*args)
-        except Queue.Empty:
+        except queue.Empty:
             raise DAQIOError("Queue is empty")
 
         return self._validate_line(line)

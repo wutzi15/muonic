@@ -1030,7 +1030,7 @@ class VelocityWidget(BaseWidget):
 
         :returns: None
         """
-        self.logger.debug("Using fit range of %s" % self.fit_range.__repr__())
+        self.logger.debug("Using fit range of %s" % repr(self.fit_range))
         fit_results = gaussian_fit(
                 bincontent=np.asarray(self.plot_canvas.heights),
                 binning=self.binning, fitrange=self.fit_range)
@@ -1378,10 +1378,8 @@ class DecayWidget(BaseWidget):
 
         for decay in self.event_data:
             decay_time = decay[1].replace(' ', '_')
-            self.mu_file.write('Decay ')
-            self.mu_file.write(decay_time.__repr__() + ' ')
-            self.mu_file.write(decay[0].__repr__())
-            self.mu_file.write('\n')
+            self.mu_file.write("Decay %s %s\n" % (repr(decay_time),
+                                                  repr(decay[0])))
             self.event_data = []
 
     def start(self):
@@ -1435,7 +1433,7 @@ class DecayWidget(BaseWidget):
 
             self.logger.warn("We now activate the muon decay mode!\n" +
                              "All other Coincidence/Veto settings will " +
-                             "be overriden!")
+                             "be overridden!")
 
             self.logger.warning("Changing gate width and enabeling pulses")
             self.logger.info("Looking for single pulse in Channel %d" %

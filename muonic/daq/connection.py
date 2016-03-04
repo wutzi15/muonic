@@ -4,12 +4,13 @@ Provides DAQ server and connection classes to interface with the serial port.
 
 from __future__ import print_function
 import abc
+from future.utils import with_metaclass
 import logging
 import os
+import queue
 import serial
 import subprocess
 from time import sleep
-import Queue
 
 try:
     import zmq
@@ -20,7 +21,7 @@ except ImportError:
 from muonic.daq import DAQMissingDependencyError
 
 
-class BaseDAQConnection(object):
+class BaseDAQConnection(with_metaclass(abc.ABCMeta, object)):
     """
     Base DAQ Connection class.
 
@@ -30,7 +31,6 @@ class BaseDAQConnection(object):
     :type logger: logging.Logger
     :raises: SystemError
     """
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, logger=None):
         if logger is None:
@@ -41,15 +41,14 @@ class BaseDAQConnection(object):
         try:
             self.serial_port = self.get_serial_port()
         except serial.SerialException as e:
-            self.logger.fatal("SerialException thrown! Value:" +
-                              e.message.__repr__())
+            self.logger.fatal("SerialException thrown! Value: %s" % e.message)
             raise SystemError(e)
 
     def get_serial_port(self):
         """
         Check out which device (/dev/tty) is used for DAQ communication.
 
-        Raises OSError if binary `which_tty_daq` cannot be found.
+        Raises OSError if binary 'which_tty_daq' cannot be found.
 
         :returns: serial.Serial -- serial connection port
         :raises: OSError
@@ -170,7 +169,7 @@ class DAQConnection(BaseDAQConnection):
                     try:
                         self.serial_port.write(str(self.in_queue.get(0)) +
                                                "\r")
-                    except (Queue.Empty, serial.SerialTimeoutException):
+                    except (queue.Empty, serial.SerialTimeoutException):
                         pass
             except NotImplementedError:
                 self.logger.debug("Running Mac version of muonic.")
@@ -178,7 +177,7 @@ class DAQConnection(BaseDAQConnection):
                     try:
                         self.serial_port.write(str(self.in_queue.get(
                                 timeout=0.01)) + "\r")
-                    except (Queue.Empty, serial.SerialTimeoutException):
+                    except (queue.Empty, serial.SerialTimeoutException):
                         pass
             sleep(0.1)
 

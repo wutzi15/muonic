@@ -22,12 +22,12 @@ __author_email__ = ", ".join([author[1] for author in AUTHORS])
 
 __description__ = ("Software to work with QNet DAQ cards. " +
                    "This is a TRUNK version")
-__long_description__ = ("Software is able to manage DAQ comunications and " +
-                        "shows e.g. a rate plot...")
 
-__source_location__ = "https://github.com/achim1/muonic/"
+__source_location__ = "https://github.com/CosmicLabDESY/muonic/"
 __docs_hosted_at__ = "http://achim1.github.io/muonic/"
+__download_url__ = ("https://github.com/CosmicLabDESY/muonic/archive/" +
+                    "release2.zip")
 __manual_hosted_at__ = ("http://physik-begreifen-zeuthen.desy.de/angebote/" +
                         "kosmische_teilchen/schuelerexperimente/" +
                         "cosmo_experiment/index_ger.html")
-__license__ = "GPL"
+__license__ = "GPLv3"

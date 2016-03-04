@@ -142,9 +142,8 @@ class DecayConfigDialog(BaseDialog):
         min_time_spinbox.setObjectName("min_pulse_time")
         min_time_spinbox.setMaximum(2000)
         min_time_spinbox.setValue(400)
-        min_time_spinbox.setToolTip(
-                QtCore.QString("Reject events where the double pulses " +
-                               "are too close together"))
+        min_time_spinbox.setToolTip("Reject events where the double pulses " +
+                                    "are too close together")
 
         layout.addWidget(min_time_spinbox, 2, 0)
         layout.addWidget(QtGui.QLabel("Minimum time between\n" +
@@ -187,7 +186,7 @@ class DecayConfigDialog(BaseDialog):
             spinbox.setObjectName(item['object_name'])
             spinbox.setSuffix(' ns')
             spinbox.setValue(item['value'])
-            spinbox.setToolTip(QtCore.QString(item['tooltip']))
+            spinbox.setToolTip(item['tooltip'])
             spinbox.setMaximum(11000)
             pulse_width_layout.addWidget(spinbox, i, 0)
             pulse_width_layout.addWidget(QtGui.QLabel(item['label']), i, 1)

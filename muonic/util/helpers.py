@@ -18,9 +18,9 @@ def setup_data_directory(directory=DATA_PATH):
     :returns: None
     """
     if not os.path.isdir(directory):
-        os.makedirs(directory, 0755)
+        os.makedirs(directory, 0o755)
     elif not os.access(directory, os.W_OK):
-        os.chmod(directory, 0755)
+        os.chmod(directory, 0o755)
 
 
 def get_data_directory():

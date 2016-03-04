@@ -529,7 +529,7 @@ class Application(QtGui.QMainWindow):
             update_setting("gate_width", gate_width)
 
             # transform gate width for daq msg
-            gate_width = bin(gate_width / 10).replace('0b', '').zfill(16)
+            gate_width = bin(gate_width // 10).replace('0b', '').zfill(16)
             gate_width_03 = format(int(gate_width[0:8], 2), 'x').zfill(2)
             gate_width_02 = format(int(gate_width[8:16], 2), 'x').zfill(2)
 

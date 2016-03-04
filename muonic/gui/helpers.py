@@ -12,7 +12,7 @@ class HistoryAwareLineEdit(QtGui.QLineEdit):
     A LineEdit widget that is aware of its input history. The history can be
     cycled by pressing arrow up and arrow down.
 
-    :param *args: widget args
+    :param args: widget args
     """
     def __init__(self, *args):
         QtGui.QLineEdit.__init__(self, *args)

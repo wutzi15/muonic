@@ -26,6 +26,7 @@ muonic needs the following packages to be installed (list may not be complete!)
 * python-numpy
 * python-qt4
 * python-serial
+* python-future
 
 
 ###installation with the setup.py script

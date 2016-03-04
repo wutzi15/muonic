@@ -1,5 +1,5 @@
 """
-Provide the different physics widgets
+Provides the different physics widgets
 """
 from __future__ import print_function
 import datetime

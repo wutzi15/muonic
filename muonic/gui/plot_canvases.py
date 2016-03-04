@@ -107,8 +107,8 @@ class BaseHistogramCanvas(BasePlotCanvas):
     :type binning: list or tuple or numpy.ndarray
     :param hist_color: the color of the histogram
     :type hist_color: str
-    :param **kwargs: additional keyword arguments
-    :param **kwargs: dict
+    :param kwargs: additional keyword arguments
+    :param kwargs: dict
     """
 
     def __init__(self, parent, logger, binning, hist_color="b", **kwargs):

@@ -623,28 +623,45 @@ class Application(QtGui.QMainWindow):
 
         Return True if found, False otherwise.
 
-        DC gives :
+        DC gives:
+
         DC C0=23 C1=71 C2=0A C3=00
         
         Which has the meaning:
 
         MM - 00 -> 8bits for channel enable/disable, coincidence and veto
-        |7   |6   |5          |4          |3       |2       |1 |0       |
+
+        +---------------------------------------------------------------------+
+        |                              bits                                   |
+        +====+====+===========+===========+========+========+========+========+
+        |7   |6   |5          |4          |3       |2       |1       |0       |
+        +----+----+-----------+-----------+--------+--------+--------+--------+
         |veto|veto|coincidence|coincidence|channel3|channel2|channel1|channel0|
-        ---------------------------bits-------------------------------------
-        Set bits for veto:
-        ........................
-        00 - ch0 is veto
-        01 - ch1 is veto
-        10 - ch2 is veto
-        11 - ch3 is veto
-        ........................
-        Set bits for coincidence
-        ........................
-        00 - singles
-        01 - twofold
-        10 - threefold
-        11 - fourfold
+        +----+----+-----------+-----------+--------+--------+--------+--------+
+
+        +-----------------+
+        |Set bits for veto|
+        +=================+
+        |00 - ch0 is veto |
+        +-----------------+
+        |01 - ch1 is veto |
+        +-----------------+
+        |10 - ch2 is veto |
+        +-----------------+
+        |11 - ch3 is veto |
+        +-----------------+
+
+        +------------------------+
+        |Set bits for coincidence|
+        +========================+
+        |00 - singles            |
+        +------------------------+
+        |01 - twofold            |
+        +------------------------+
+        |10 - threefold          |
+        +------------------------+
+        |11 - fourfold           |
+        +------------------------+
 
         :param msg: daq message
         :type msg: str

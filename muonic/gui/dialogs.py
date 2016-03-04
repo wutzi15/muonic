@@ -70,7 +70,8 @@ class BaseDialog(QtGui.QDialog):
         Create a group of choices.
 
         :param object_name: the base object name for the checkbox group.
-        checkboxes get named 'object_name_%d' where %d is the checkboxes' index
+            checkboxes get named 'object_name_%d' where %d is
+            the checkboxes' index
         :type object_name: str
         :param label: the label of the checkbox group
         :type label: str

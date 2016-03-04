@@ -1,0 +1,368 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>muonic.daq.simulation &mdash; muonic 2.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="muonic 2.1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="../../../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head>
+  <body role="document">
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for muonic.daq.simulation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Provides a simple DAQ card simulation, so that software can be tested.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">abc</span>
+<span class="kn">from</span> <span class="nn">future.utils</span> <span class="kn">import</span> <span class="n">with_metaclass</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">path</span>
+<span class="kn">import</span> <span class="nn">queue</span>
+<span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">choice</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">zmq</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="c1"># DAQMissingDependencyError will be raised when trying to use zmq</span>
+    <span class="k">pass</span>
+
+<span class="kn">from</span> <span class="nn">muonic.daq</span> <span class="kn">import</span> <span class="n">DAQMissingDependencyError</span>
+
+
+<div class="viewcode-block" id="DAQSimulation"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulation">[docs]</a><span class="k">class</span> <span class="nc">DAQSimulation</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates reading from and writing to DAQ card.</span>
+
+<span class="sd">    :param logger: logger object</span>
+<span class="sd">    :type logger: logging.Logger</span>
+<span class="sd">    :param simulation_file: path to the simulation data file</span>
+<span class="sd">    :type simulation_file: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DEFAULT_SIMULATION_FILE</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span> <span class="s2">&quot;simdaq.txt&quot;</span><span class="p">))</span>
+    <span class="n">LINES_TO_PUSH</span> <span class="o">=</span> <span class="mi">10</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">simulation_file</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pushed_lines</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">simulation_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="c1"># use packaged simulation file</span>
+            <span class="n">simulation_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_SIMULATION_FILE</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_simulation_file</span> <span class="o">=</span> <span class="n">simulation_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_simulation_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_waiting</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_return_info</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_trigger</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_to_return</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Closes simulation file on object destruction</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_daq</span><span class="p">,</span> <span class="nb">file</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span><span class="o">.</span><span class="n">closed</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="DAQSimulation._physics"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulation._physics">[docs]</a>    <span class="k">def</span> <span class="nf">_physics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This routine will increase the scalars variables using predefined</span>
+<span class="sd">        rates. Rates are drawn from Poisson distributions.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">poisson_choice</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">choice</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">lam</span><span class="p">,</span> <span class="n">size</span><span class="p">)))</span>
+
+        <span class="k">def</span> <span class="nf">format_to_8digits</span><span class="p">(</span><span class="n">hex_string</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">hex_string</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">format_scalar</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">format_to_8digits</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">val</span><span class="p">)[</span><span class="mi">2</span><span class="p">:])</span>
+
+        <span class="c1"># draw rates from a poisson distribution.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">poisson_choice</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">poisson_choice</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+=</span> <span class="n">poisson_choice</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+=</span> <span class="n">poisson_choice</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_trigger</span> <span class="o">+=</span> <span class="n">poisson_choice</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_to_return</span> <span class="o">=</span> <span class="s1">&#39;DS S0=</span><span class="si">%s</span><span class="s1"> S1=</span><span class="si">%s</span><span class="s1"> S2=</span><span class="si">%s</span><span class="s1"> S3=</span><span class="si">%s</span><span class="s1"> S4=</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> \
+                                  <span class="p">(</span><span class="n">format_scalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                                   <span class="n">format_scalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                                   <span class="n">format_scalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
+                                   <span class="n">format_scalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scalars_ch</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
+                                   <span class="n">format_scalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_scalars_trigger</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Scalars to return </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_to_return</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DAQSimulation.readline"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulation.readline">[docs]</a>    <span class="k">def</span> <span class="nf">readline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read dummy pulses from the simdaq file till the configured value is</span>
+<span class="sd">        reached.</span>
+
+<span class="sd">        :returns: str -- next simulated DAQ output</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initial</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="s2">&quot;T0=42  T1=42  T2=42  T3=42&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_return_info</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_return_info</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scalars_to_return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pushed_lines</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pushed_lines</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">LINES_TO_PUSH</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_simulation_file</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;File reloaded&quot;</span><span class="p">)</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">line</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pushed_lines</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_waiting</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_daq</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="DAQSimulation.write"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulation.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Trigger a simulated daq response with command.</span>
+
+<span class="sd">        :param command: Command to send (simulated) to the DAQ card</span>
+<span class="sd">        :type command: str</span>
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;got the following command </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">command</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;DS&quot;</span> <span class="ow">in</span> <span class="n">command</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_return_info</span> <span class="o">=</span> <span class="bp">True</span></div>
+
+<div class="viewcode-block" id="DAQSimulation.in_waiting"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulation.in_waiting">[docs]</a>    <span class="k">def</span> <span class="nf">in_waiting</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate a busy DAQ.</span>
+
+<span class="sd">        :returns: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_waiting</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_physics</span><span class="p">()</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_waiting</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="k">return</span> <span class="bp">False</span></div></div>
+
+
+<div class="viewcode-block" id="BaseDAQSimulationConnection"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.BaseDAQSimulationConnection">[docs]</a><span class="k">class</span> <span class="nc">BaseDAQSimulationConnection</span><span class="p">(</span><span class="n">with_metaclass</span><span class="p">(</span><span class="n">abc</span><span class="o">.</span><span class="n">ABCMeta</span><span class="p">,</span> <span class="nb">object</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for a simulated connection to DAQ card.</span>
+
+<span class="sd">    :param logger: logger object</span>
+<span class="sd">    :type logger: logging.Logger</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">logger</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span> <span class="o">=</span> <span class="n">DAQSimulation</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">running</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="nd">@abc.abstractmethod</span>
+<div class="viewcode-block" id="BaseDAQSimulationConnection.read"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.BaseDAQSimulationConnection.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate DAQ I/O.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span></div></div>
+
+
+<div class="viewcode-block" id="DAQSimulationConnection"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulationConnection">[docs]</a><span class="k">class</span> <span class="nc">DAQSimulationConnection</span><span class="p">(</span><span class="n">BaseDAQSimulationConnection</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulated client connection to DAQ card.</span>
+
+<span class="sd">    :param in_queue: queue for incoming data</span>
+<span class="sd">    :type in_queue: multiprocessing.Queue</span>
+<span class="sd">    :param out_queue: queue for outgoing data</span>
+<span class="sd">    :type out_queue: multiprocessing.Queue</span>
+<span class="sd">    :param logger: logger object</span>
+<span class="sd">    :type logger: logging.Logger</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_queue</span><span class="p">,</span> <span class="n">out_queue</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">BaseDAQSimulationConnection</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">in_queue</span> <span class="o">=</span> <span class="n">in_queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">out_queue</span> <span class="o">=</span> <span class="n">out_queue</span>
+
+<div class="viewcode-block" id="DAQSimulationConnection.read"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulationConnection.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate DAQ I/O.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;inqueue size is </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_queue</span><span class="o">.</span><span class="n">qsize</span><span class="p">())</span>
+                <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_queue</span><span class="o">.</span><span class="n">qsize</span><span class="p">():</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">in_queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">+</span>
+                                               <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Queue empty!&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Running Mac version of muonic.&quot;</span><span class="p">)</span>
+                <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">in_queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                                <span class="n">timeout</span><span class="o">=</span><span class="mf">0.01</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                        <span class="k">pass</span>
+
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">in_waiting</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">out_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="DAQSimulationServer"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulationServer">[docs]</a><span class="k">class</span> <span class="nc">DAQSimulationServer</span><span class="p">(</span><span class="n">BaseDAQSimulationConnection</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulated DAQ server.</span>
+
+<span class="sd">    Raises DAQMissingDependencyError if zmq is not installed.</span>
+
+<span class="sd">    :param address: address to listen on</span>
+<span class="sd">    :type address: str</span>
+<span class="sd">    :param port: TCP port to listen on</span>
+<span class="sd">    :type port: int</span>
+<span class="sd">    :param logger: logger object</span>
+<span class="sd">    :type logger: logging.Logger</span>
+<span class="sd">    :raises: DAQMissingDependencyError</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="o">=</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">5556</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="n">BaseDAQSimulationConnection</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PAIR</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;tcp://</span><span class="si">%s</span><span class="s2">:</span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DAQMissingDependencyError</span><span class="p">(</span><span class="s2">&quot;no zmq installed...&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DAQSimulationServer.serve"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulationServer.serve">[docs]</a>    <span class="k">def</span> <span class="nf">serve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs the server.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="DAQSimulationServer.read"><a class="viewcode-back" href="../../../muonic.html#muonic.daq.simulation.DAQSimulationServer.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulate DAQ I/O.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">recv_string</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">in_waiting</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serial_port</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span></div></div>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">DAQSimulationServer</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">5556</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">serve</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
+    </div>
+  </body>
+</html>

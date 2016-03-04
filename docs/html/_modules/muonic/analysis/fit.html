@@ -1,0 +1,383 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>muonic.analysis.fit &mdash; muonic 2.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="muonic 2.1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="../../../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head>
+  <body role="document">
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for muonic.analysis.fit</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Script for performing a fit to a histogramm of recorded </span>
+<span class="sd">time differences for the use with QNet</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pylab</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span> <span class="kn">as</span> <span class="nn">optimize</span>
+
+
+<div class="viewcode-block" id="fit"><a class="viewcode-back" href="../../../muonic.html#muonic.analysis.fit.fit">[docs]</a><span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="n">bincontent</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">binning</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">21</span><span class="p">),</span> <span class="n">fitrange</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit function</span>
+
+<span class="sd">    :param bincontent:</span>
+<span class="sd">    :param binning:</span>
+<span class="sd">    :param fitrange:</span>
+<span class="sd">    :returns:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">decay</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span> <span class="o">/</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    
+    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">decay</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span>
+    
+    <span class="k">if</span> <span class="n">bincontent</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">xmin</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="n">xmax</span> <span class="o">=</span> <span class="mf">20.0</span>
+
+        <span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">open</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+                 <span class="k">if</span> <span class="n">xmin</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">l</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">xmax</span><span class="p">]</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">),</span> <span class="s2">&quot;decay times&quot;</span><span class="p">)</span>
+
+        <span class="c1"># nbins = optimalbins.optbinsize(times, 1, 80)</span>
+        <span class="c1"># print(nbins, &quot;Optimalbins selects nbins&quot;)</span>
+        <span class="c1"># nbins = optimalbins.optbinsize(times, 1, 30)</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Nbins:&quot;</span><span class="p">,</span> <span class="n">nbins</span><span class="p">)</span>
+        
+        <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">bin_edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">bin_edges</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bin_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        
+        <span class="n">hist</span><span class="p">,</span> <span class="n">edges</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">)</span>
+        
+        <span class="c1"># hist = hist[:-1]</span>
+        <span class="n">p0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">200</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+        
+        <span class="n">output</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">leastsq</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">bin_centers</span><span class="p">,</span> <span class="n">hist</span><span class="p">),</span>
+                                  <span class="n">full_output</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">covar</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Fit parameters:&quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Covariance matrix:&quot;</span><span class="p">,</span> <span class="n">covar</span><span class="p">)</span>
+        
+        <span class="n">chisquare</span><span class="o">=</span><span class="mf">0.</span>
+        <span class="n">deviations</span><span class="o">=</span><span class="n">error</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">bin_centers</span><span class="p">,</span> <span class="n">hist</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">deviations</span><span class="p">):</span>
+            <span class="n">chisquare</span> <span class="o">+=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">d</span> <span class="o">/</span> <span class="n">decay</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">bin_centers</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;legend.fontsize&quot;</span><span class="p">:</span> <span class="mi">13</span><span class="p">}</span>
+
+        <span class="n">pylab</span><span class="o">.</span><span class="n">rcParams</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        
+        <span class="n">fitx</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="n">pylab</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">bin_centers</span><span class="p">,</span> <span class="n">hist</span><span class="p">,</span> <span class="s2">&quot;b^&quot;</span><span class="p">,</span> <span class="n">fitx</span><span class="p">,</span> <span class="n">decay</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">fitx</span><span class="p">),</span> <span class="s2">&quot;b-&quot;</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span> <span class="o">+</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Decay time in microseconds&quot;</span><span class="p">)</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Events in time bin&quot;</span><span class="p">)</span>
+        <span class="c1"># pylab.legend((&quot;Data&quot;,&quot;Fit: (%4.2f +- %4.2f) microsec,&quot; +</span>
+        <span class="c1">#               &quot;chisq / ndf=%4.2f&quot; % (p[1], numpy.sqrt(covar[1][1]),</span>
+        <span class="c1">#                                      chisquare / (nbins - len(p)))))</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">legend</span><span class="p">((</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span><span class="s2">&quot;Fit: (</span><span class="si">%4.2f</span><span class="s2">) microsec,&quot;</span> <span class="o">+</span>
+                      <span class="s2">&quot;chisq/ndf=</span><span class="si">%4.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">chisquare</span> <span class="o">/</span> <span class="p">(</span><span class="n">nbins</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">))))</span>
+
+        <span class="n">pylab</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+        <span class="n">pylab</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;fit.png&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># this is then used for the mudecay window in muonic.</span>
+        <span class="c1"># we have to adjust the bins to the values of the used histogram.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bincontent</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;WARNING: Empty bins.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">None</span>
+    
+        <span class="n">bins</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">fitrange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">fitrange</span> <span class="o">=</span> <span class="p">(</span><span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">fitrange</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="n">bin_mask</span> <span class="o">=</span> <span class="p">[(</span><span class="n">bin_centers</span> <span class="o">&lt;=</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&amp;</span>
+                        <span class="p">(</span><span class="n">bin_centers</span> <span class="o">&gt;=</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+            <span class="n">bin_centers_</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bin_centers</span>
+                                          <span class="k">if</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bin_centers_</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s2">&quot;WARNING: fit range too small. &quot;</span> <span class="o">+</span>
+                      <span class="s2">&quot;Skipping fitting. Try with larger fit range.&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">bin_centers_</span>
+                <span class="n">bincontent</span> <span class="o">=</span> <span class="n">bincontent</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">]</span>
+
+        <span class="c1"># we cut the leading edge of the distribution away for the fit </span>
+        <span class="n">glob_max</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">bincontent</span><span class="p">)</span>
+        <span class="n">cut</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">bincontent</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">glob_max</span><span class="p">:</span>
+                <span class="n">cut</span> <span class="o">=</span> <span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">cut_bincontent</span> <span class="o">=</span> <span class="n">bincontent</span><span class="p">[</span><span class="n">cut</span><span class="p">:]</span>
+        <span class="c1"># cut_bincenter = bin_centers[cut]</span>
+        <span class="n">cut_bincenters</span> <span class="o">=</span> <span class="n">bin_centers</span><span class="p">[</span><span class="n">cut</span><span class="p">:]</span>
+
+        <span class="c1"># # maybe something for the future..</span>
+        <span class="c1"># nbins = optimalbins.optbinsize(cut_bincontent, 1, 20)</span>
+        <span class="c1"># fit_bins = numpy.linspace(cut_bincenter, 20, nbins)</span>
+        <span class="c1"># fit_bin_centers = fit_bins[:-1] + 0.5 * (fit_bins[1] - fit_bins[0])</span>
+        <span class="c1"># fit_bincontent = numpy.zeros(len(fit_bin_centers))</span>
+
+        <span class="c1"># # the bincontent must be redistributed to fit_bincontent</span>
+        <span class="c1"># for binindex_fit in xrange(len(fit_bincontent)):</span>
+        <span class="c1">#     for binindex,content in enumerate(bincontent):</span>
+        <span class="c1">#         if bin_centers[binindex] &lt;= fit_bin_centers[binindex_fit]:</span>
+        <span class="c1">#             fit_bincontent[binindex_fit] += content</span>
+
+        <span class="n">p0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">200</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>
+
+        <span class="c1"># output = optimize.leastsq(error, p0,</span>
+        <span class="c1">#                           args=(fit_bin_centers,fitbincontent),</span>
+        <span class="c1">#                           full_output=1)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">leastsq</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span>
+                                  <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">cut_bincenters</span><span class="p">,</span> <span class="n">cut_bincontent</span><span class="p">),</span>
+                                  <span class="n">full_output</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">covar</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Fit parameters:&quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Covariance matrix:&quot;</span><span class="p">,</span> <span class="n">covar</span><span class="p">)</span>
+        
+        <span class="n">chisquare</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="n">deviations</span> <span class="o">=</span> <span class="n">error</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cut_bincenters</span><span class="p">,</span> <span class="n">cut_bincontent</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">deviations</span><span class="p">):</span>
+            <span class="n">chisquare</span> <span class="o">+=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">d</span> <span class="o">/</span> <span class="n">decay</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cut_bincenters</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;legend.fontsize&quot;</span><span class="p">:</span> <span class="mi">13</span><span class="p">}</span>
+
+        <span class="n">pylab</span><span class="o">.</span><span class="n">rcParams</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+        
+        <span class="c1"># nbins = 84</span>
+        <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+        <span class="n">xmin</span> <span class="o">=</span> <span class="n">cut_bincenters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">xmax</span> <span class="o">=</span> <span class="n">cut_bincenters</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">fitx</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># return (bin_centers, bincontent, fitx,</span>
+        <span class="c1">#         decay, p, covar, chisquare, nbins)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">cut_bincenters</span><span class="p">,</span> <span class="n">cut_bincontent</span><span class="p">,</span> <span class="n">fitx</span><span class="p">,</span>
+                <span class="n">decay</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">covar</span><span class="p">,</span> <span class="n">chisquare</span><span class="p">,</span> <span class="n">nbins</span><span class="p">)</span></div>
+     
+
+<div class="viewcode-block" id="gaussian_fit"><a class="viewcode-back" href="../../../muonic.html#muonic.analysis.fit.gaussian_fit">[docs]</a><span class="k">def</span> <span class="nf">gaussian_fit</span><span class="p">(</span><span class="n">bincontent</span><span class="p">,</span> <span class="n">binning</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">fitrange</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Guassian fit function</span>
+
+<span class="sd">    :param bincontent:</span>
+<span class="sd">    :param binning:</span>
+<span class="sd">    :param fitrange:</span>
+<span class="sd">    :returns:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">gauss</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">pi</span><span class="p">)))</span> <span class="o">*</span>
+                <span class="n">numpy</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(((</span><span class="n">x</span> <span class="o">-</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)))</span>
+    
+    <span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">gauss</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bincontent</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;WARNING: Empty bins.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    
+    <span class="c1"># this is then used for the mudecay window in muonic.</span>
+    <span class="c1"># we have to adjust the bins to the values of the used histogram.</span>
+
+    <span class="n">bins</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">bins</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">fitrange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">fitrange</span> <span class="o">=</span> <span class="p">(</span><span class="n">binning</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">fitrange</span> <span class="o">=</span> <span class="p">(</span><span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">binning</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">bin_mask</span> <span class="o">=</span> <span class="p">[(</span><span class="n">bin_centers</span> <span class="o">&lt;=</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&amp;</span>
+                    <span class="p">(</span><span class="n">bin_centers</span> <span class="o">&gt;=</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+        <span class="n">bin_centers_</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">bin_centers</span>
+                                      <span class="k">if</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">fitrange</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bin_centers_</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s2">&quot;WARNING: fit range too small. &quot;</span> <span class="o">+</span>
+                  <span class="s2">&quot;Skipping fitting. Try with larger fit range.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bin_centers</span> <span class="o">=</span> <span class="n">bin_centers_</span>
+            <span class="n">bincontent</span> <span class="o">=</span> <span class="n">bincontent</span><span class="p">[</span><span class="n">bin_mask</span><span class="p">]</span>
+
+    <span class="c1"># # we cut the leading edge of the distribution away for the fit</span>
+    <span class="c1"># glob_max = max(bincontent)</span>
+    <span class="c1"># cut = 0</span>
+    <span class="c1"># for i in enumerate(bincontent):</span>
+    <span class="c1">#     if i[1] == glob_max:</span>
+    <span class="c1">#         cut = i[0]</span>
+
+    <span class="n">cut_bincontent</span> <span class="o">=</span> <span class="n">bincontent</span>  <span class="c1"># [cut:]</span>
+    <span class="c1"># cut_bincenter = bin_centers  # [cut]</span>
+    <span class="n">cut_bincenters</span> <span class="o">=</span> <span class="n">bin_centers</span>  <span class="c1"># [cut:]</span>
+
+    <span class="c1"># # maybe something for the future..</span>
+    <span class="c1"># nbins = optimalbins.optbinsize(cut_bincontent, 1, 20)</span>
+    <span class="c1"># fit_bins = numpy.linspace(cut_bincenter, 20, nbins)</span>
+    <span class="c1"># fit_bin_centers = fit_bins[:-1] + 0.5 * (fit_bins[1] - fit_bins[0])</span>
+    <span class="c1"># fit_bincontent = numpy.zeros(len(fit_bin_centers))</span>
+
+    <span class="c1"># # the bincontent must be redistributed to fit_bincontent</span>
+    <span class="c1"># for binindex_fit in xrange(len(fit_bincontent)):</span>
+    <span class="c1">#     for binindex, content in enumerate(bincontent):</span>
+    <span class="c1">#         if bin_centers[binindex] &lt;= fit_bin_centers[binindex_fit]:</span>
+    <span class="c1">#             fit_bincontent[binindex_fit] += content</span>
+
+    <span class="n">wsum</span> <span class="o">=</span> <span class="n">cut_bincontent</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="p">(</span><span class="n">cut_bincontent</span> <span class="o">*</span> <span class="n">cut_bincenters</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">wsum</span>
+    <span class="n">meansquared</span> <span class="o">=</span> <span class="p">(</span><span class="n">cut_bincontent</span> <span class="o">*</span> <span class="n">cut_bincenters</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">wsum</span>
+
+    <span class="n">var</span> <span class="o">=</span> <span class="n">meansquared</span> <span class="o">-</span> <span class="n">mean</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="c1"># p0 = numpy.array([20, 1.0, 5])</span>
+    <span class="n">p0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">max</span><span class="p">(</span><span class="n">cut_bincontent</span><span class="p">),</span> <span class="n">var</span><span class="p">,</span> <span class="n">mean</span><span class="p">])</span>
+
+    <span class="c1"># output = optimize.leastsq(error, p0,</span>
+    <span class="c1">#                           args=(fit_bin_centers, fitbincontent),</span>
+    <span class="c1">#                           full_output=1)</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="n">optimize</span><span class="o">.</span><span class="n">leastsq</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="n">p0</span><span class="p">,</span>
+                              <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">cut_bincenters</span><span class="p">,</span> <span class="n">cut_bincontent</span><span class="p">),</span>
+                              <span class="n">full_output</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">covar</span> <span class="o">=</span> <span class="n">output</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Fit parameters:&quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Covariance matrix:&quot;</span><span class="p">,</span> <span class="n">covar</span><span class="p">)</span>
+    
+    <span class="n">chisquare</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">deviations</span> <span class="o">=</span> <span class="n">error</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cut_bincenters</span><span class="p">,</span> <span class="n">cut_bincontent</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">deviations</span><span class="p">):</span>
+        <span class="n">chisquare</span> <span class="o">+=</span> <span class="n">d</span><span class="o">*</span><span class="n">d</span><span class="o">/</span><span class="n">gauss</span><span class="p">(</span><span class="n">p</span><span class="p">,</span><span class="n">cut_bincenters</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    
+    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;legend.fontsize&quot;</span><span class="p">:</span> <span class="mi">13</span><span class="p">}</span>
+
+    <span class="n">pylab</span><span class="o">.</span><span class="n">rcParams</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+    
+    <span class="c1"># nbins = 84</span>
+    <span class="n">nbins</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+    <span class="n">xmin</span> <span class="o">=</span> <span class="n">cut_bincenters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">xmax</span> <span class="o">=</span> <span class="n">cut_bincenters</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">fitx</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+    <span class="c1"># return (bin_centers, bincontent, fitx, decay, p, covar, chisquare, nbins)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">cut_bincenters</span><span class="p">,</span> <span class="n">cut_bincontent</span><span class="p">,</span> <span class="n">fitx</span><span class="p">,</span>
+            <span class="n">gauss</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">covar</span><span class="p">,</span> <span class="n">chisquare</span><span class="p">,</span> <span class="n">nbins</span><span class="p">)</span></div>
+     
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">fit</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
+    </div>
+  </body>
+</html>

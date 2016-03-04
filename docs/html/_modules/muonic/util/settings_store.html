@@ -1,0 +1,240 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>muonic.util.settings_store &mdash; muonic 2.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="muonic 2.1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="../../../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head>
+  <body role="document">
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for muonic.util.settings_store</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Global application settings store</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;update_setting&quot;</span><span class="p">,</span> <span class="s2">&quot;have_setting&quot;</span><span class="p">,</span> <span class="s2">&quot;get_setting&quot;</span><span class="p">,</span>
+           <span class="s2">&quot;remove_setting&quot;</span><span class="p">,</span> <span class="s2">&quot;update_settings&quot;</span><span class="p">,</span>
+           <span class="s2">&quot;apply_default_settings&quot;</span><span class="p">,</span> <span class="s2">&quot;dump_settings&quot;</span><span class="p">]</span>
+
+<span class="n">_default_settings</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;write_pulses&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;write_daq_status&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;time_window&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
+    <span class="s2">&quot;gate_width&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+    <span class="s2">&quot;veto&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;veto_ch0&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;veto_ch1&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;veto_ch2&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;active_ch0&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="s2">&quot;active_ch1&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="s2">&quot;active_ch2&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="s2">&quot;active_ch3&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="s2">&quot;coincidence0&quot;</span><span class="p">:</span> <span class="bp">True</span><span class="p">,</span>
+    <span class="s2">&quot;coincidence1&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;coincidence2&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;coincidence3&quot;</span><span class="p">:</span> <span class="bp">False</span><span class="p">,</span>
+    <span class="s2">&quot;threshold_ch0&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+    <span class="s2">&quot;threshold_ch1&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+    <span class="s2">&quot;threshold_ch2&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">,</span>
+    <span class="s2">&quot;threshold_ch3&quot;</span><span class="p">:</span> <span class="mi">300</span>
+<span class="p">}</span>
+
+<span class="n">_settings</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="update_setting"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.update_setting">[docs]</a><span class="k">def</span> <span class="nf">update_setting</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update value for settings key.</span>
+
+<span class="sd">    Raises KeyError if key is None.</span>
+
+<span class="sd">    :param key: settings key</span>
+<span class="sd">    :type key: str</span>
+<span class="sd">    :param value: setting value</span>
+<span class="sd">    :type value: object</span>
+<span class="sd">    :raises: KeyError</span>
+<span class="sd">    :returns: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_settings</span>
+
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;key must not be of &#39;None-Type&#39;&quot;</span><span class="p">)</span>
+
+    <span class="n">_settings</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span></div>
+
+
+<div class="viewcode-block" id="have_setting"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.have_setting">[docs]</a><span class="k">def</span> <span class="nf">have_setting</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns true if settings key exists, False otherwise.</span>
+
+<span class="sd">    :param key: settings key</span>
+<span class="sd">    :type key: str</span>
+<span class="sd">    :returns: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_settings</span></div>
+
+
+<div class="viewcode-block" id="get_setting"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.get_setting">[docs]</a><span class="k">def</span> <span class="nf">get_setting</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieves the settings value for given key.</span>
+
+<span class="sd">    :param key: settings key</span>
+<span class="sd">    :type key: str</span>
+<span class="sd">    :param default: the default value if setting is not found</span>
+<span class="sd">    :type default: mixed</span>
+<span class="sd">    :returns: object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="remove_setting"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.remove_setting">[docs]</a><span class="k">def</span> <span class="nf">remove_setting</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove setting with key.</span>
+
+<span class="sd">    :param key: settings key</span>
+<span class="sd">    :type key: str</span>
+<span class="sd">    :returns: removed object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_settings</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">clear_settings</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clears the settings store</span>
+
+<span class="sd">    :returns: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_settings</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="update_settings"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.update_settings">[docs]</a><span class="k">def</span> <span class="nf">update_settings</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add settings from dict.</span>
+
+<span class="sd">    :param settings: settings dictionary</span>
+<span class="sd">    :type settings: dict</span>
+<span class="sd">    :param clear: clear settings store before updating settings</span>
+<span class="sd">    :type clear: bool</span>
+<span class="sd">    :returns: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">settings</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">settings</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">clear</span><span class="p">:</span>
+            <span class="n">clear_settings</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;argument has to be a dict&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="apply_default_settings"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.apply_default_settings">[docs]</a><span class="k">def</span> <span class="nf">apply_default_settings</span><span class="p">(</span><span class="n">clear</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply default settings. If &#39;clear&#39; is False settings keys</span>
+<span class="sd">    different from the default settings will retain.</span>
+
+<span class="sd">    :param clear: clear settings store before applying default settings</span>
+<span class="sd">    :type clear: bool</span>
+<span class="sd">    :returns: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">update_settings</span><span class="p">(</span><span class="n">_default_settings</span><span class="p">,</span> <span class="n">clear</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="dump_settings"><a class="viewcode-back" href="../../../muonic.html#muonic.util.settings_store.dump_settings">[docs]</a><span class="k">def</span> <span class="nf">dump_settings</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prints the current settings.</span>
+
+<span class="sd">    :returns: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">_settings</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-20s</span><span class="s2"> = </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
+    </div>
+  </body>
+</html>

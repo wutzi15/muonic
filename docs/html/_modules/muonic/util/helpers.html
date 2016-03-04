@@ -1,0 +1,326 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>muonic.util.helpers &mdash; muonic 2.1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '2.1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="muonic 2.1.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="../../../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head>
+  <body role="document">
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for muonic.util.helpers</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Utility functions</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+
+<span class="kn">from</span> <span class="nn">muonic</span> <span class="kn">import</span> <span class="n">DATA_PATH</span>
+
+
+<div class="viewcode-block" id="setup_data_directory"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.setup_data_directory">[docs]</a><span class="k">def</span> <span class="nf">setup_data_directory</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="n">DATA_PATH</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tries to create the data directory if it is not present. Also tries to</span>
+<span class="sd">    set the appropriate permissions if it is not writeable.</span>
+
+<span class="sd">    :param directory: the directory to set up</span>
+<span class="sd">    :type directory: str</span>
+<span class="sd">    :returns: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="mi">0</span><span class="n">o755</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">W_OK</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="mi">0</span><span class="n">o755</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_data_directory"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.get_data_directory">[docs]</a><span class="k">def</span> <span class="nf">get_data_directory</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the data directory. Acts as a proxy for custom data</span>
+<span class="sd">    directories later on.</span>
+
+<span class="sd">    :returns: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">DATA_PATH</span></div>
+
+
+<div class="viewcode-block" id="get_muonic_filename"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.get_muonic_filename">[docs]</a><span class="k">def</span> <span class="nf">get_muonic_filename</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">measurement_id</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get a filename in the right format. &#39;measurement_id&#39; may be a single char</span>
+<span class="sd">    identifying the measurement type. &#39;suffix&#39; may be the initials of the</span>
+<span class="sd">    current user.</span>
+
+<span class="sd">    :param start_date: the start date of the measurement</span>
+<span class="sd">    :type start_date: date object</span>
+<span class="sd">    :param measurement_id: the identifier of the measurement</span>
+<span class="sd">    :type measurement_id: str</span>
+<span class="sd">    :param suffix: the suffix</span>
+<span class="sd">    :type suffix: str</span>
+<span class="sd">    :returns: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_data_directory</span><span class="p">(),</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_HOURS_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span>
+                        <span class="p">(</span><span class="n">start_date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">_%H-%M-%S&#39;</span><span class="p">),</span>
+                         <span class="n">measurement_id</span><span class="p">,</span>
+                         <span class="n">suffix</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="rename_muonic_file"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.rename_muonic_file">[docs]</a><span class="k">def</span> <span class="nf">rename_muonic_file</span><span class="p">(</span><span class="n">duration</span><span class="p">,</span> <span class="n">file_path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Replaces the placeholder &#39;HOURS&#39; in filename by the elapsed amount of</span>
+<span class="sd">    hours since measurement started.</span>
+
+<span class="sd">    Raises OSError if the file_path does not contain a filename.</span>
+
+<span class="sd">    :param duration: the duration of the measurement</span>
+<span class="sd">    :type duration: date object</span>
+<span class="sd">    :param file_path: the file path</span>
+<span class="sd">    :type file_path: str</span>
+<span class="sd">    :raises: OSError</span>
+<span class="sd">    :returns: bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">hours</span> <span class="o">=</span> <span class="n">get_hours_from_duration</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+
+    <span class="n">path</span><span class="p">,</span> <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">filename</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;filename is empty&quot;</span><span class="p">)</span>
+
+    <span class="n">new_filename</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;HOURS&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">hours</span><span class="p">))</span>
+
+    <span class="c1"># move file</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">new_filename</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="get_hours_from_duration"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.get_hours_from_duration">[docs]</a><span class="k">def</span> <span class="nf">get_hours_from_duration</span><span class="p">(</span><span class="n">duration</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the hourse from a given duration</span>
+
+<span class="sd">    :param duration: the duration of the measurement</span>
+<span class="sd">    :type duration: date object</span>
+<span class="sd">    :returns: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="n">duration</span><span class="o">.</span><span class="n">seconds</span> <span class="o">/</span> <span class="mf">3600.</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">duration</span><span class="o">.</span><span class="n">days</span> <span class="o">*</span> <span class="mi">24</span></div>
+
+
+<div class="viewcode-block" id="format_date"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.format_date">[docs]</a><span class="k">def</span> <span class="nf">format_date</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">_%H-%M-%S&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Format time by the provides format.</span>
+
+<span class="sd">    :param date: the date</span>
+<span class="sd">    :type: date object</span>
+<span class="sd">    :param fmt: the date format</span>
+<span class="sd">    :type fmt: str</span>
+<span class="sd">    :returns: str</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">date</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">fmt</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WrappedFile"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.WrappedFile">[docs]</a><span class="k">class</span> <span class="nc">WrappedFile</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A file wrapper which keeps track of open files.</span>
+
+<span class="sd">    Raises ValueError if filename is None.</span>
+
+<span class="sd">    :param filename: the filename</span>
+<span class="sd">    :type filename: str</span>
+<span class="sd">    :raises: ValueError</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">open_files</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;filename cannot be of &#39;NoneType&#39;&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="WrappedFile.get_filename"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.WrappedFile.get_filename">[docs]</a>    <span class="k">def</span> <span class="nf">get_filename</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the filename</span>
+
+<span class="sd">        :returns: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span></div>
+
+<div class="viewcode-block" id="WrappedFile.open"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.WrappedFile.open">[docs]</a>    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open file and track it.</span>
+
+<span class="sd">        :param mode: the file mode</span>
+<span class="sd">        :type mode: str</span>
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span>
+        <span class="n">WrappedFile</span><span class="o">.</span><span class="n">open_files</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">closed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns True if the file is closed, False otherwise.</span>
+
+<span class="sd">        :returns: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+<div class="viewcode-block" id="WrappedFile.close"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.WrappedFile.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Close file and un-track it.</span>
+
+<span class="sd">        Raises IOError if file is not open.</span>
+
+<span class="sd">        :raises: IOError</span>
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;file &#39;</span><span class="si">%s</span><span class="s2">&#39; is not open&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">WrappedFile</span><span class="o">.</span><span class="n">open_files</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return file on entering &#39;with&#39; block</span>
+
+<span class="sd">        :returns: file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Close file on leaving &#39;with&#39; block.</span>
+
+<span class="sd">        Exit the runtime context related to this object. The parameters</span>
+<span class="sd">        describe the exception that caused the context to be exited. If</span>
+<span class="sd">        the context was exited without an exception, all three arguments</span>
+<span class="sd">        will be None.</span>
+
+<span class="sd">        :param exc_type: type of the Exception that caused the</span>
+<span class="sd">        context to be exited</span>
+<span class="sd">        :param exc_value: value of the Exception</span>
+<span class="sd">        :param traceback: traceback, if any</span>
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Proxy all other attributes of file.</span>
+
+<span class="sd">        Raises IOError if file is not open.</span>
+
+<span class="sd">        :param attr: attribute name</span>
+<span class="sd">        :type attr: str</span>
+<span class="sd">        :raises: IOError</span>
+<span class="sd">        :returns: mixed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;file &#39;</span><span class="si">%s</span><span class="s2">&#39; is not open&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Representation</span>
+
+<span class="sd">        :returns: str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename</span>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="WrappedFile.get_open_files"><a class="viewcode-back" href="../../../muonic.html#muonic.util.helpers.WrappedFile.get_open_files">[docs]</a>    <span class="k">def</span> <span class="nf">get_open_files</span><span class="p">():</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get all open files.</span>
+
+<span class="sd">        :returns: set of str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">WrappedFile</span><span class="o">.</span><span class="n">open_files</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">muonic 2.1.0 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.6.
+    </div>
+  </body>
+</html>

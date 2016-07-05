@@ -1545,8 +1545,7 @@ class DecayWidget(BaseWidget):
 class DAQWidget(BaseWidget):
     """
     Shows the DAQ message log. The message log can be written to a file.
-    This widget has a command line to issue DAQ commands, as well as
-    periodic commands within a user defined interval.
+    This widget has a command line to issue DAQ commands.
 
     :param logger: logger object
     :type logger: logging.Logger
@@ -1566,13 +1565,6 @@ class DAQWidget(BaseWidget):
         self.measurement_duration = datetime.timedelta()
         self.start_time = datetime.datetime.now()
 
-        # periodic call
-        self.interval = 1
-        self.command = None
-        self.periodic_commands = []
-        self.periodic_status = None
-        self.periodic_call_timer = QtCore.QTimer()
-
         # daq msg log
         self.daq_msg_log = QtGui.QPlainTextEdit()
         self.daq_msg_log.setReadOnly(True)
@@ -1584,29 +1576,21 @@ class DAQWidget(BaseWidget):
         self.label = QtGui.QLabel("Command")
         self.hello_edit = HistoryAwareLineEdit()
         self.file_button = QtGui.QPushButton("Save RAW-File")
-        self.periodic_button = QtGui.QPushButton("Periodic Call")
 
         # connect signals
-        QtCore.QObject.connect(self.periodic_call_timer,
-                               QtCore.SIGNAL("timeout()"),
-                               self._execute_commands)
         QtCore.QObject.connect(self.hello_edit,
                                QtCore.SIGNAL("returnPressed()"),
                                self.on_hello_clicked)
         QtCore.QObject.connect(self.file_button,
                                QtCore.SIGNAL("clicked()"),
                                self.on_file_clicked)
-        QtCore.QObject.connect(self.periodic_button,
-                               QtCore.SIGNAL("clicked()"),
-                               self.on_periodic_clicked)
 
         # add widgets to layout
         layout = QtGui.QGridLayout(self)
-        layout.addWidget(self.daq_msg_log, 0, 0, 1, 4)
+        layout.addWidget(self.daq_msg_log, 0, 0, 1, 3)
         layout.addWidget(self.label, 1, 0)
         layout.addWidget(self.hello_edit, 1, 1)
         layout.addWidget(self.file_button, 1, 2)
-        layout.addWidget(self.periodic_button, 1, 3)
 
     def on_hello_clicked(self):
         """
@@ -1654,53 +1638,6 @@ class DAQWidget(BaseWidget):
                                    stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
             self.output_file.close()
             self.parent.status_bar.removeWidget(self.write_status)
-
-    def on_periodic_clicked(self):
-        """
-        Issue a DAQ command periodically
-
-        :returns: None
-        """
-        dialog = PeriodicCallDialog(self.command, self.interval)
-
-        if dialog.exec_() == 1:
-            self.interval = dialog.get_widget_value("interval")
-            self.command = str(dialog.get_widget_value("command")).strip()
-
-            # ignore empty commands
-            if self.command == "":
-                return
-
-            self.periodic_commands = self.command.split('+')
-
-            # stop timer and clear status if already running
-            if self.periodic_call_timer.isActive():
-                self.periodic_call_timer.stop()
-                self.parent.status_bar.removeWidget(self.periodic_status)
-
-            self.periodic_call_timer.start(self.interval * 1000)
-            self.periodic_status = QtGui.QLabel(
-                    '%s every %s sec' % (self.command, self.interval))
-            self.parent.status_bar.addPermanentWidget(
-                    self.periodic_status)
-
-            # execute commands now
-            self._execute_commands()
-        else:
-            try:
-                self.periodic_call_timer.stop()
-                self.parent.status_bar.removeWidget(self.periodic_status)
-            except AttributeError:
-                pass
-
-    def _execute_commands(self):
-        """
-        Execute periodic commands
-
-        :returns: None
-        """
-        for command in self.periodic_commands:
-            self.daq_put(command)
 
     def update(self):
         """

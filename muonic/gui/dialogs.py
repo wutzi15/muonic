@@ -267,43 +267,6 @@ class VelocityConfigDialog(BaseDialog):
         self.show()
 
 
-class PeriodicCallDialog(BaseDialog):
-    """
-    Dialog to issue a DAQ command periodically
-
-    :param command: DAQ command
-    :type command: str
-    :param interval: interval for the periodic call
-    :type interval: int
-    """
-
-    def __init__(self, command=None, interval=1):
-        BaseDialog.__init__(self, "Periodic Call")
-
-        layout = QtGui.QVBoxLayout(self)
-
-        command_box = QtGui.QLineEdit()
-        command_box.setObjectName("command")
-        command_box.setText("" if command is None else command)
-
-        interval_box = QtGui.QSpinBox()
-        interval_box.setMaximum(600)
-        interval_box.setMinimum(1)
-        interval_box.setSingleStep(1)
-        interval_box.setValue(interval)
-        interval_box.setSuffix(" s")
-        interval_box.setObjectName("interval")
-
-        layout.addWidget(QtGui.QLabel("Command"))
-        layout.addWidget(command_box)
-        layout.addWidget(QtGui.QLabel("Interval"))
-        layout.addWidget(interval_box)
-
-        layout.addWidget(self.button_box(left=0))
-
-        self.show()
-
-
 class ThresholdDialog(BaseDialog):
     """
     Dialog to adjust the thresholds

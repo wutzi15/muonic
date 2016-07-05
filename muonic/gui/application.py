@@ -72,7 +72,7 @@ class Application(QtGui.QMainWindow):
         self.raw_filename = get_muonic_filename(self.start_time,
                                                 "RAW", opts.user)
         self.decay_filename = get_muonic_filename(self.start_time,
-                                                  "L", opts.user)
+                                                  "D", opts.user)
         self.pulse_filename = get_muonic_filename(self.start_time,
                                                   "P", opts.user)
 

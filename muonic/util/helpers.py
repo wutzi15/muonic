@@ -7,6 +7,8 @@ import shutil
 
 from muonic import DATA_PATH
 
+_data_path = DATA_PATH
+
 
 def setup_data_directory(directory=DATA_PATH):
     """
@@ -23,6 +25,19 @@ def setup_data_directory(directory=DATA_PATH):
         os.chmod(directory, 0o755)
 
 
+def set_data_directory(directory):
+    """
+    Sets the data directory
+
+    :param directory: the data directory
+    :type directory: str
+    :returns: None
+    """
+    global _data_path
+
+    _data_path = directory
+
+
 def get_data_directory():
     """
     Get the data directory. Acts as a proxy for custom data
@@ -30,7 +45,9 @@ def get_data_directory():
 
     :returns: str
     """
-    return DATA_PATH
+    global _data_path
+
+    return _data_path
 
 
 def get_muonic_filename(start_date, measurement_id, suffix):

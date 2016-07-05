@@ -33,7 +33,7 @@ from PyQt4 import QtGui
 from muonic import __version__, DATA_PATH
 from muonic.daq import DAQClient, DAQProvider
 from muonic.gui import Application
-from muonic.util.helpers import setup_data_directory
+from muonic.util.helpers import set_data_directory, setup_data_directory
 
 
 def main(args, logger):
@@ -43,7 +43,8 @@ def main(args, logger):
     :param args: arguments
     :param logger: logger object
     """
-    setup_data_directory()
+    set_data_directory(args.data_path)
+    setup_data_directory(args.data_path)
 
     root = QtGui.QApplication(sys.argv)
     root.setQuitOnLastWindowClosed(True)
@@ -65,7 +66,7 @@ if __name__ == '__main__':
     description = """
 This program is dedicated for the use with QNet DAQ cards.
 YOURINITIALS are two letters indicating your name.
-All files will be stored in:
+All files will be stored in (if --data-path is not provided):
   %s
 Files are named by the following scheme:
   YYYY-MM-DD_HH-MM-SS_X_Y_YOURINITIALS
@@ -107,6 +108,9 @@ and Y will be the total measurement time""" % DATA_PATH
     parser.add_argument("-v", "--version", dest="version",
                         help="show current version",
                         action="store_true", default=False)
+    parser.add_argument("-P", "--data-path", dest="data_path",
+                        help="directory to store measurement data in",
+                        type=str, default=DATA_PATH)
 
     args = parser.parse_args()
 

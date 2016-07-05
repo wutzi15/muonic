@@ -23,7 +23,7 @@ from muonic.gui.helpers import HistoryAwareLineEdit
 from muonic.gui.plot_canvases import ScalarsCanvas, LifetimeCanvas
 from muonic.gui.plot_canvases import PulseCanvas, PulseWidthCanvas
 from muonic.gui.plot_canvases import VelocityCanvas
-from muonic.gui.dialogs import DecayConfigDialog, PeriodicCallDialog
+from muonic.gui.dialogs import DecayConfigDialog
 from muonic.gui.dialogs import VelocityConfigDialog, FitRangeConfigDialog
 from muonic.analysis import fit, gaussian_fit
 from muonic.analysis import VelocityTrigger, DecayTriggerThorough
@@ -1575,7 +1575,7 @@ class DAQWidget(BaseWidget):
         # input field and buttons
         self.label = QtGui.QLabel("Command")
         self.hello_edit = HistoryAwareLineEdit()
-        self.file_button = QtGui.QPushButton("Save RAW-File")
+        self.file_button = QtGui.QPushButton("Save DAQ-File")
 
         # connect signals
         QtCore.QObject.connect(self.hello_edit,
@@ -1612,13 +1612,13 @@ class DAQWidget(BaseWidget):
         """
         if self.output_file.closed:
             try:
-                self.file_button.setText("Stop saving RAW-File")
+                self.file_button.setText("Stop saving DAQ-File")
                 self.daq_put("CE")
 
                 self.start_time = datetime.datetime.now()
                 self.output_file.open("a")
                 self.output_file.write(
-                        "# raw data run from: %s\n" %
+                        "# daq data run from: %s\n" %
                         self.start_time.strftime("%Y-%m-%d_%H-%M-%S"))
 
                 self.write_status = QtGui.QLabel("Writing to %s" %
@@ -1628,7 +1628,7 @@ class DAQWidget(BaseWidget):
                 self.logger.error("unable to open file '%s': %s" %
                                   (repr(self.output_file), str(e)))
         else:
-            self.file_button.setText("Save RAW-File")
+            self.file_button.setText("Save DAQ-File")
 
             stop_time = datetime.datetime.now()
             # add duration

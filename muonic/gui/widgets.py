@@ -957,7 +957,7 @@ class VelocityWidget(BaseWidget):
     :type pulse_extractor: muonic.analysis.analyzer.PulseExtractor
     :param parent: parent widget
     """
-    def __init__(self, logger, pulse_extractor, parent=None):
+    def __init__(self, logger, filename, pulse_extractor, parent=None):
         BaseWidget.__init__(self, logger, parent)
 
         self.pulse_extractor = pulse_extractor
@@ -974,6 +974,12 @@ class VelocityWidget(BaseWidget):
         self.event_data = []
         self.last_event_time = None
         self.active_since = None
+
+        self.mu_file = WrappedFile(filename)
+
+        # measurement duration and start time
+        self.measurement_duration = datetime.timedelta()
+        self.start_time = datetime.datetime.now()
 
         # velocity canvas
         self.plot_canvas = VelocityCanvas(self, logger,
@@ -1080,10 +1086,10 @@ class VelocityWidget(BaseWidget):
                                            lower_channel=self.lower_channel)
 
         if flight_time is not None and flight_time > 0:
-            self.logger.info("measured flight time %s" % flight_time)
             self.event_data.append(flight_time)
             self.muon_counter += 1
             self.last_event_time = datetime.datetime.now()
+            self.logger.info("measured flight time %s" % flight_time)
 
     def update(self):
         """
@@ -1103,6 +1109,9 @@ class VelocityWidget(BaseWidget):
         self.last_event_label.setText(
                 "The last muon was detected at %s" %
                 self.last_event_time.strftime('%Y-%m-%d %H:%M:%S'))
+
+        for flight_time in self.event_data:
+            self.mu_file.write("Flight time %s\n" % repr(flight_time))
 
         self.event_data = []
 
@@ -1141,6 +1150,11 @@ class VelocityWidget(BaseWidget):
                                                "measurement active!")
             self.parent.status_bar.addPermanentWidget(self.running_status)
 
+            self.start_time = datetime.datetime.now()
+            self.mu_file.open("a")
+            self.mu_file.write("# new velocity measurement run from: %s\n" %
+                               self.start_time.strftime("%Y-%m-%d_%H-%M-%S"))
+
             self.active(True)
 
             # restart rate measurement
@@ -1167,6 +1181,16 @@ class VelocityWidget(BaseWidget):
         if not self.active():
             return
 
+        stop_time = datetime.datetime.now()
+        self.measurement_duration += stop_time - self.start_time
+
+        self.logger.info("Muon velocity mode now deactivated, returning to " +
+                         "previous setting (if available)")
+
+        self.mu_file.write("# stopped run on: %s\n" %
+                           stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
+        self.mu_file.close()
+
         # stop extracting pulses to file if pulse analyzer and decay
         # measurements are inactive and global setting is also false
         if (not get_setting("write_pulses") and
@@ -1179,6 +1203,34 @@ class VelocityWidget(BaseWidget):
         self.active_since_label.setText("")
         self.parent.status_bar.removeWidget(self.running_status)
         self.parent.get_widget("rate").stop()
+
+    def finish(self):
+        """
+        Cleanup, close and rename decay file
+
+        :returns: None
+        """
+        if not self.mu_file.closed:
+            stop_time = datetime.datetime.now()
+
+            # add duration
+            self.measurement_duration += stop_time - self.start_time
+
+            self.mu_file.write("# stopped run on: %s\n" %
+                               stop_time.strftime("%Y-%m-%d_%H-%M-%S"))
+            self.mu_file.close()
+
+        # only rename if file actually exists
+        if os.path.exists(self.mu_file.get_filename()):
+            try:
+                self.logger.info(("The muon velocity measurement was " +
+                                  "active for %f hours") %
+                                 get_hours_from_duration(
+                                     self.measurement_duration))
+                rename_muonic_file(self.measurement_duration,
+                                   self.mu_file.get_filename())
+            except (OSError, IOError):
+                pass
 
 
 class DecayWidget(BaseWidget):
@@ -1380,7 +1432,8 @@ class DecayWidget(BaseWidget):
             decay_time = decay[1].replace(' ', '_')
             self.mu_file.write("Decay %s %s\n" % (repr(decay_time),
                                                   repr(decay[0])))
-            self.event_data = []
+
+        self.event_data = []
 
     def start(self):
         """

@@ -73,6 +73,8 @@ class Application(QtGui.QMainWindow):
                                                 "DAQ", opts.user)
         self.decay_filename = get_muonic_filename(self.start_time,
                                                   "D", opts.user)
+        self.velocity_filename = get_muonic_filename(self.start_time,
+                                                  "V", opts.user)
         self.pulse_filename = get_muonic_filename(self.start_time,
                                                   "P", opts.user)
 
@@ -189,8 +191,8 @@ class Application(QtGui.QMainWindow):
                         DecayWidget(self.logger, self.decay_filename,
                                     self.pulse_extractor, parent=self))
         self.add_widget("velocity", "Muon Velocity",
-                        VelocityWidget(self.logger, self.pulse_extractor,
-                                       parent=self))
+                        VelocityWidget(self.logger, self.velocity_filename,
+                                       self.pulse_extractor, parent=self))
         self.add_widget("status", "Status",
                         StatusWidget(self.logger, parent=self))
         self.add_widget("daq", "DAQ Output",

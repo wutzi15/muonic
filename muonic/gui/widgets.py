@@ -399,7 +399,7 @@ class RateWidget(BaseWidget):
             return
 
         self.update_info_field("daq_time", "%.2f s" % self.time_window)
-        self.update_info_field("max_rate", "%.2f 1/s" % self.max_rate)
+        self.update_info_field("max_rate", "%.3f 1/s" % self.max_rate)
 
         for i in range(4):
             self.update_fields(i, get_setting("active_ch%d" % i))
@@ -428,7 +428,7 @@ class RateWidget(BaseWidget):
         if enabled:
             if not disable_only:
                 self.rate_fields[channel].setText(
-                        "%.2f" % (self.scalar_buffer[channel] /
+                        "%.3f" % (self.scalar_buffer[channel] /
                                   self.time_window))
                 self.scalar_fields[channel].setText(
                         "%d" % (self.scalar_buffer[channel]))

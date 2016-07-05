@@ -74,7 +74,7 @@ class Application(QtGui.QMainWindow):
         self.decay_filename = get_muonic_filename(self.start_time,
                                                   "D", opts.user)
         self.velocity_filename = get_muonic_filename(self.start_time,
-                                                  "V", opts.user)
+                                                     "V", opts.user)
         self.pulse_filename = get_muonic_filename(self.start_time,
                                                   "P", opts.user)
 

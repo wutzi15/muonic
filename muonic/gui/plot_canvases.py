@@ -11,6 +11,7 @@ except ImportError:
     from matplotlib.backends.backend_qt4agg \
         import NavigationToolbar2QT as NavigationToolbar
 
+import pylab as pl
 import numpy as np
 
 
@@ -38,11 +39,11 @@ class BasePlotCanvas(FigureCanvas):
     :param spacing: left and right spacing of the subplots
     :type spacing: tuple
     """
-    
+
     def __init__(self, parent, logger, ymin=0, ymax=10, xmin=0, xmax=10,
                  xlabel="xlabel", ylabel="ylabel", grid=True,
                  spacing=(0.1, 0.9)):
-       
+
         self.logger = logger
 
         # initialization of the canvas
@@ -58,7 +59,7 @@ class BasePlotCanvas(FigureCanvas):
         self.ax.set_ylabel(ylabel)
         self.ax.set_autoscale_on(False)
         self.ax.grid(grid)
-        
+
         # store the limits for later use
         self.xmin = xmin
         self.xmax = xmax
@@ -66,9 +67,9 @@ class BasePlotCanvas(FigureCanvas):
         self.ymax = ymax
         self.xlabel = xlabel
         self.ylabel = ylabel
-        
+
         # force a redraw of the Figure
-        self.fig.canvas.draw() 
+        self.fig.canvas.draw()
         self.setParent(parent)
 
     # FIXME: is this of any use here? remove?
@@ -85,7 +86,7 @@ class BasePlotCanvas(FigureCanvas):
         """
         colors = {"green": '\033[92m', "yellow": '\033[93m',
                   "red": '\033[91m', "blue": '\033[94m', "none": '\033[0m'}
-        return colors[color] + string + colors["none"]   
+        return colors[color] + string + colors["none"]
 
     def update_plot(self, *args):
         """
@@ -216,6 +217,30 @@ class BaseHistogramCanvas(BasePlotCanvas):
         self.ax.lines = []
         self.ax.plot(bin_centers, bincontent, "b^", fitx, decay(p, fitx), "b-")
 
+        # print fit function formula start
+        x = bin_centers
+        y = bincontent
+        poly = pl.polyfit(x, y, 2)
+
+        def poly2latex(poly, variable="x", width=2):
+          t = ["{0:0.{width}f}"]
+          t.append(t[-1] + " {variable}")
+          t.append(t[-1] + "^{1}")
+
+          def f():
+            for i, v in enumerate(reversed(poly)):
+              idx = i if i < 2 else 2
+              yield t[idx].format(v, i, variable=variable, width=width)
+
+          return "${}$".format("+".join(f()))
+
+        self.ax.plot(x, y, "o", alpha=0.4)
+        x2 = np.linspace(-2, 2, 100)
+        y2 = np.polyval(poly, x2)
+        self.ax.plot(x2, y2, lw=2, color="r")
+        self.ax.text(x2[5], y2[5], poly2latex(poly), fontsize=16)
+        # print fit function formula end
+
         # FIXME: this seems to crop the histogram
         # self.ax.set_ylim(0,max(bincontent)*1.2)
         self.ax.set_xlabel(self.xlabel)
@@ -240,13 +265,14 @@ class BaseHistogramCanvas(BasePlotCanvas):
         except TypeError:
             self.logger.warn("Covariance Matrix is 'None', could " +
                              "not calculate fit error!")
-            self.ax.legend(("Data", "Fit: (%4.2f) %s \n chisq/ndf=%4.2f" %
-                            (p[2], self.dimension, chisquare/(nbins-len(p)))),
-                           loc=1)
+            self.ax.legend(("Data", ("Fit: (%4.2f) %s \n " +
+                                     " chisq/ndf=%4.2f") %
+                            (p[2], self.dimension,
+                             chisquare / (nbins-len(p)))), loc=1)
 
         self.fig.canvas.draw()
 
-        
+
 class PulseCanvas(BasePlotCanvas):
     """
     Canvas to display pulses
@@ -300,7 +326,7 @@ class PulseCanvas(BasePlotCanvas):
                     pulse_max.append(pulse[1])
 
             pulse_max = max(pulse_max)*1.2
-            # TODO: the trick below does not really work as expected. 
+            # TODO: the trick below does not really work as expected.
             # if pulse_max < self.ax.get_xlim()[1]:
             #    pulse_max = self.ax.get_xlim()[0]
             self.ax.set_xlim(0, pulse_max)
@@ -313,8 +339,8 @@ class PulseCanvas(BasePlotCanvas):
                 self.ax.legend(loc=2)
 
             self.fig.canvas.draw()
-        
-        
+
+
 class ScalarsCanvas(BasePlotCanvas):
     """
     A plot canvas to display scalars
@@ -330,7 +356,7 @@ class ScalarsCanvas(BasePlotCanvas):
     TRIGGER_COLOR = 'g'
 
     def __init__(self, parent, logger, max_length=40):
-        
+
         BasePlotCanvas.__init__(self, parent, logger, ymin=0, ymax=20,
                                 xlabel="Time (s)", ylabel="Rate (1/s)")
         self.show_trigger = True
@@ -340,7 +366,7 @@ class ScalarsCanvas(BasePlotCanvas):
         self.time_data = []
         self.time_window = 0
         self.reset()
-        
+
     def reset(self, show_pending=False):
         """
         Reset all cached plot data
@@ -427,7 +453,7 @@ class ScalarsCanvas(BasePlotCanvas):
             # get count of active cannels
             channels = enabled_channels + [show_trigger]
             active_count = sum(channels)
-            
+
             self.ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                            ncol=active_count, mode="expand", borderaxespad=0.,
                            handlelength=2)
@@ -440,11 +466,11 @@ class ScalarsCanvas(BasePlotCanvas):
                 self.channel_data[ch].remove(self.channel_data[ch][0])
             self.trigger_data.remove(self.trigger_data[0])
             self.time_data.remove(self.time_data[0])
-        
+
         ma = max(max(self.channel_data[0]), max(self.channel_data[1]),
                  max(self.channel_data[2]), max(self.channel_data[3]),
                  max(self.trigger_data))
-            
+
         self.ax.set_ylim(0, ma * 1.1)
 
         # do not set x-range if time_data consists of only one item to
@@ -472,7 +498,7 @@ class LifetimeCanvas(BaseHistogramCanvas):
                 np.linspace(binning[0], binning[1], binning[2]),
                 xlabel="Time between Pulses ($\mu$s)", ylabel="Events")
 
-     
+
 class VelocityCanvas(BaseHistogramCanvas):
     """
     A simple histogram for the use with mu velocity measurement

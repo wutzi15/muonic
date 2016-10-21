@@ -65,10 +65,18 @@ def set_large_plot_style():
     :returns: None
     """
     font_size = 20
+    
+    # workaround for ancient versions of matplotlib at DESY
+    from matplotlib import __version__ as mplversion
+    from distutils.version import LooseVersion
+    if LooseVersion(mplversion) > LooseVersion("1.3.0"):
+        ff = "TeX Gyre Pagella" 
+    else:
+        ff = 'serif'
 
     rc("axes", titlesize=font_size, labelsize=font_size)
     # rc("font", serif="Palatino")
-    rc("font", size=font_size, family="TeX Gyre Pagella")  # this is Palatino
+    rc("font", size=font_size, family=ff)  # this is Palatino
     rc("grid", linewidth=1.2)
     rc("legend", fontsize=font_size, markerscale=1, numpoints=1)
     rc("lines", linewidth=2, markersize=10)

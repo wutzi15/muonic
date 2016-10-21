@@ -151,7 +151,7 @@ class RateWidget(BaseWidget):
 
         # measurement start and duration
         self.measurement_duration = datetime.timedelta()
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.utcnow()
 
         # define the begin of the time interval for the rate calculation
         self.last_query_time = 0
@@ -471,7 +471,7 @@ class RateWidget(BaseWidget):
 
         self.active(True)
 
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.utcnow()
 
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
@@ -538,7 +538,7 @@ class RateWidget(BaseWidget):
 
         self.active(False)
 
-        stop_time = datetime.datetime.now()
+        stop_time = datetime.datetime.utcnow()
 
         self.measurement_duration += stop_time - self.start_time
 
@@ -561,7 +561,7 @@ class RateWidget(BaseWidget):
         :returns: None
         """
         if self.active():
-            stop_time = datetime.datetime.now()
+            stop_time = datetime.datetime.utcnow()
 
             self.measurement_duration += stop_time - self.start_time
 
@@ -983,7 +983,7 @@ class VelocityWidget(BaseWidget):
 
         # measurement duration and start time
         self.measurement_duration = datetime.timedelta()
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.utcnow()
 
         # velocity canvas
         self.plot_canvas = VelocityCanvas(self, logger,
@@ -1092,7 +1092,7 @@ class VelocityWidget(BaseWidget):
         if flight_time is not None and flight_time > 0:
             self.event_data.append(flight_time)
             self.muon_counter += 1
-            self.last_event_time = datetime.datetime.now()
+            self.last_event_time = datetime.datetime.utcnow()
             self.logger.info("measured flight time %s" % flight_time)
 
     def update(self):
@@ -1135,7 +1135,7 @@ class VelocityWidget(BaseWidget):
             self.checkbox.setChecked(True)
             self.muon_counter_label.setText("We have detected %d muons " %
                                             self.muon_counter)
-            self.active_since = datetime.datetime.now()
+            self.active_since = datetime.datetime.utcnow()
             self.active_since_label.setText(
                     "The measurement is active since %s" %
                     self.active_since.strftime('%Y-%m-%d %H:%M:%S'))
@@ -1154,7 +1154,7 @@ class VelocityWidget(BaseWidget):
                                                "measurement active!")
             self.parent.status_bar.addPermanentWidget(self.running_status)
 
-            self.start_time = datetime.datetime.now()
+            self.start_time = datetime.datetime.utcnow()
             self.mu_file.open("a")
             self.mu_file.write("# new velocity measurement run from: %s\n" %
                                self.start_time.strftime("%Y-%m-%d_%H-%M-%S"))
@@ -1185,7 +1185,7 @@ class VelocityWidget(BaseWidget):
         if not self.active():
             return
 
-        stop_time = datetime.datetime.now()
+        stop_time = datetime.datetime.utcnow()
         self.measurement_duration += stop_time - self.start_time
 
         self.logger.info("Muon velocity mode now deactivated, returning to " +
@@ -1215,7 +1215,7 @@ class VelocityWidget(BaseWidget):
         :returns: None
         """
         if not self.mu_file.closed:
-            stop_time = datetime.datetime.now()
+            stop_time = datetime.datetime.utcnow()
 
             # add duration
             self.measurement_duration += stop_time - self.start_time
@@ -1280,7 +1280,7 @@ class DecayWidget(BaseWidget):
 
         # measurement duration and start time
         self.measurement_duration = datetime.timedelta()
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.utcnow()
 
         self.previous_coinc_time_03 = "00"
         self.previous_coinc_time_02 = "0A"
@@ -1457,7 +1457,7 @@ class DecayWidget(BaseWidget):
             self.checkbox.setChecked(True)
             self.muon_counter_label.setText("We have %d decayed muons " %
                                             self.muon_counter)
-            self.active_since = datetime.datetime.now()
+            self.active_since = datetime.datetime.utcnow()
             self.active_since_label.setText(
                     "The measurement is active since %s" %
                     self.active_since.strftime('%Y-%m-%d %H:%M:%S'))
@@ -1515,7 +1515,7 @@ class DecayWidget(BaseWidget):
             # so we take all pulses
             self.daq_put("WC 00 0F")
 
-            self.start_time = datetime.datetime.now()
+            self.start_time = datetime.datetime.utcnow()
             self.mu_file.open("a")
             self.mu_file.write("# new decay measurement run from: %s\n" %
                                self.start_time.strftime("%Y-%m-%d_%H-%M-%S"))
@@ -1543,7 +1543,7 @@ class DecayWidget(BaseWidget):
         if not self.active():
             return
 
-        stop_time = datetime.datetime.now()
+        stop_time = datetime.datetime.utcnow()
         self.measurement_duration += stop_time - self.start_time
 
         # reset coincidence times
@@ -1577,7 +1577,7 @@ class DecayWidget(BaseWidget):
         :returns: None
         """
         if not self.mu_file.closed:
-            stop_time = datetime.datetime.now()
+            stop_time = datetime.datetime.utcnow()
 
             # add duration
             self.measurement_duration += stop_time - self.start_time
@@ -1620,7 +1620,7 @@ class DAQWidget(BaseWidget):
 
         # measurement start and duration
         self.measurement_duration = datetime.timedelta()
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.utcnow()
 
         # daq msg log
         self.daq_msg_log = QtGui.QPlainTextEdit()
@@ -1672,7 +1672,7 @@ class DAQWidget(BaseWidget):
                 self.file_button.setText("Stop saving DAQ-File")
                 self.daq_put("CE")
 
-                self.start_time = datetime.datetime.now()
+                self.start_time = datetime.datetime.utcnow()
                 self.output_file.open("a")
                 self.output_file.write(
                         "# daq data run from: %s\n" %
@@ -1687,7 +1687,7 @@ class DAQWidget(BaseWidget):
         else:
             self.file_button.setText("Save DAQ-File")
 
-            stop_time = datetime.datetime.now()
+            stop_time = datetime.datetime.utcnow()
             # add duration
             self.measurement_duration += stop_time - self.start_time
 
@@ -1735,7 +1735,7 @@ class DAQWidget(BaseWidget):
         :returns: None
         """
         if not self.output_file.closed:
-            stop_time = datetime.datetime.now()
+            stop_time = datetime.datetime.utcnow()
 
             # add duration
             self.measurement_duration += stop_time - self.start_time

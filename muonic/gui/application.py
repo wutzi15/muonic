@@ -38,7 +38,7 @@ class Application(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
 
         # start time of the application
-        self.start_time = datetime.datetime.now()
+        self.start_time = datetime.datetime.utcnow()
 
         # apply default settings first
         apply_default_settings()

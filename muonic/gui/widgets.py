@@ -371,12 +371,16 @@ class RateWidget(BaseWidget):
         # if program is exited
         if self.active():
             try:
+                utcdt = datetime.datetime.utcfromtimestamp(self.query_time)
                 self.data_file.write(
-                        "%f %f %f %f %f %f %f %f %f %f \n" %
-                        (scalar_diffs[0], scalar_diffs[1],
-                         scalar_diffs[2], scalar_diffs[3],
+                    "%s %f %f %f %f %f %f %f %f %f %f %f \n" %
+                        (utcdt.strftime("%Y %m %d %H %M %S %f")[:-3],
                          self.rates[0], self.rates[1], self.rates[2],
-                         self.rates[3], self.rates[4], self.rates[5]))
+                         self.rates[3], self.rates[4],
+                         scalar_diffs[0], scalar_diffs[1],
+                         scalar_diffs[2], scalar_diffs[3], scalar_diffs[4],
+                         self.rates[5]))
+
                 self.logger.debug("Rate plot data was written to %s" %
                                   repr(self.data_file))
             except ValueError:
@@ -486,9 +490,9 @@ class RateWidget(BaseWidget):
 
         # write column headers if this is the first run
         if self.first_run:
-            self.data_file.write("chan0 | chan1 | chan2 | chan3 | " +
-                                 "R0 | R1 | R2 | R3 | " +
-                                 "trigger | Delta_time\n")
+            self.data_file.write("year month day hour minutes second milliseconds" +
+                                 " | R0 | R1 | R2 | R3 | R trigger | " +
+                           " chan0 | chan1 | chan2 | chan3 | trigger | Delta_time\n")
             self.first_run = False
 
         # determine type of measurement

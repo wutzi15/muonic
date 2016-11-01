@@ -2,6 +2,7 @@
 """
 Provides the main window for the gui part of muonic
 """
+from os import path
 import datetime
 import time
 import webbrowser
@@ -45,6 +46,8 @@ class Application(QtGui.QMainWindow):
 
         QtCore.QLocale.setDefault(QtCore.QLocale("en_us"))
         self.setWindowTitle("muonic")
+        self.setWindowIcon(QtGui.QIcon(path.join(path.dirname(__file__),
+                                                   "muonic.xpm")))
 
         # params
         self.daq = daq

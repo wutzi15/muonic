@@ -35,7 +35,8 @@ setup(name=muonic.__name__,
       scripts=["bin/muonic", "bin/which_tty_daq"],
       packages=["muonic", "muonic.analysis", "muonic.daq",
                 "muonic.gui", "muonic.util"],
-      package_data={"muonic": ["daq/simdaq.txt", "gui/daq_commands_help.txt"]},
+      package_data={"muonic": ["daq/simdaq.txt", "gui/daq_commands_help.txt",
+                              "gui/muonic.xpm"]},
       classifiers=[
           "License :: OSI Approved :: GNU General Public License v3 or " +
           "later (GPLv3+)",

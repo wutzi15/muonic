@@ -18,7 +18,7 @@ DATA_PATH = path.join(getenv('HOME'), 'muonic_data')
 
 __all__ = ["util", "daq", "analysis", "gui"]
 
-__version__ = "2.1.0"
+__version__ = "2.1.3"
 __author__ = ", ".join([author[0] for author in AUTHORS])
 __author_email__ = ", ".join([author[1] for author in AUTHORS])
 

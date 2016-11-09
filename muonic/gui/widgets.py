@@ -374,7 +374,7 @@ class RateWidget(BaseWidget):
                 utcdt = datetime.datetime.utcfromtimestamp(self.query_time)
                 self.data_file.write(
                     "%s %f %f %f %f %f %f %f %f %f %f %f \n" %
-                        (utcdt.strftime("%Y %m %d %H %M %S %f")[:-3],
+                        (utcdt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                          self.rates[0], self.rates[1], self.rates[2],
                          self.rates[3], self.rates[4],
                          scalar_diffs[0], scalar_diffs[1],
@@ -505,7 +505,7 @@ class RateWidget(BaseWidget):
 
         self.data_file.write("# new %s measurement run from: %s\n" %
                              (measurement_type,
-                              self.start_time.strftime("%a %d %b %Y %H:%M:%S %Z")))
+                              self.start_time.strftime("%a %d %b %Y %H:%M:%S UTC")))
 
         # update table fields
         for i in range(4):
@@ -551,7 +551,7 @@ class RateWidget(BaseWidget):
         self.update_info_field("max_rate", enable=False)
 
         self.data_file.write("# stopped run on: %s\n" %
-                             stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                             stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
         self.data_file.close()
 
     def finish(self):
@@ -566,7 +566,7 @@ class RateWidget(BaseWidget):
             self.measurement_duration += stop_time - self.start_time
 
             self.data_file.write("# stopped run on: %s\n" %
-                                 stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                                 stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
             self.data_file.close()
 
         # only rename if file actually exists
@@ -1112,9 +1112,11 @@ class VelocityWidget(BaseWidget):
                                         self.muon_counter)
         self.last_event_label.setText(
                 "The last muon was detected at %s" %
-                self.last_event_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                self.last_event_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
         for flight_time in self.event_data:
-            self.mu_file.write("Flight time %s\n" % repr(flight_time))
+            self.mu_file.write("%s Flight time %s\n" % (
+                self.last_event_time.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                repr(flight_time)))
 
         self.event_data = []
 
@@ -1137,7 +1139,7 @@ class VelocityWidget(BaseWidget):
             self.active_since = datetime.datetime.utcnow()
             self.active_since_label.setText(
                     "The measurement is active since %s" %
-                    self.active_since.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                    self.active_since.strftime("%a %d %b %Y %H:%M:%S UTC"))
 
             for chan in range(4):
                 if dialog.get_widget_value("upper_checkbox_%d" % chan):
@@ -1156,7 +1158,7 @@ class VelocityWidget(BaseWidget):
             self.start_time = datetime.datetime.utcnow()
             self.mu_file.open("a")
             self.mu_file.write("# new velocity measurement run from: %s\n" %
-                               self.start_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                               self.start_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
 
             self.active(True)
 
@@ -1191,7 +1193,7 @@ class VelocityWidget(BaseWidget):
                          "previous setting (if available)")
 
         self.mu_file.write("# stopped run on: %s\n" %
-                           stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                           stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
         self.mu_file.close()
 
         # stop extracting pulses to file if pulse analyzer and decay
@@ -1220,7 +1222,7 @@ class VelocityWidget(BaseWidget):
             self.measurement_duration += stop_time - self.start_time
 
             self.mu_file.write("# stopped run on: %s\n" %
-                               stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                               stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
             self.mu_file.close()
 
         # only rename if file actually exists
@@ -1403,8 +1405,9 @@ class DecayWidget(BaseWidget):
                 max_double_pulse_width=self.max_double_pulse_width)
 
         if decay is not None:
-            when = time.asctime()
-            self.event_data.append((decay / 1000, when))
+            when = datetime.datetime.utcnow()
+            self.event_data.append((decay / 1000, 
+                                    when.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]))
             self.muon_counter += 1
             self.last_event_time = when
             self.logger.info("We have found a decaying muon with a " +
@@ -1429,11 +1432,11 @@ class DecayWidget(BaseWidget):
                                         self.muon_counter)
         self.last_event_label.setText(
                 "Last detected decay at time %s " %
-                self.last_event_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                self.last_event_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
 
         for decay in self.event_data:
-            decay_time = decay[1].replace(' ', '_')
-            self.mu_file.write("Decay %s %s\n" % (repr(decay_time),
+            decay_time = decay[1]#.replace(' ', '_')
+            self.mu_file.write("%s Decay %s\n" % (repr(decay_time),
                                                   repr(decay[0])))
 
         self.event_data = []
@@ -1459,7 +1462,7 @@ class DecayWidget(BaseWidget):
             self.active_since = datetime.datetime.utcnow()
             self.active_since_label.setText(
                     "The measurement is active since %s" %
-                    self.active_since.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                    self.active_since.strftime("%a %d %b %Y %H:%M:%S UTC"))
 
             self.decay_min_time = int(
                     dialog.get_widget_value("min_pulse_time"))
@@ -1517,7 +1520,7 @@ class DecayWidget(BaseWidget):
             self.start_time = datetime.datetime.utcnow()
             self.mu_file.open("a")
             self.mu_file.write("# new decay measurement run from: %s\n" %
-                               self.start_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                               self.start_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
 
             self.active(True)
 
@@ -1553,7 +1556,7 @@ class DecayWidget(BaseWidget):
                          "previous setting (if available)")
 
         self.mu_file.write("# stopped run on: %s\n" %
-                           stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                           stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
         self.mu_file.close()
 
         # stop extracting pulses to file if pulse analyzer and velocity
@@ -1582,7 +1585,7 @@ class DecayWidget(BaseWidget):
             self.measurement_duration += stop_time - self.start_time
 
             self.mu_file.write("# stopped run on: %s\n" %
-                               stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                               stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
             self.mu_file.close()
 
         # only rename if file actually exists
@@ -1675,7 +1678,7 @@ class DAQWidget(BaseWidget):
                 self.output_file.open("a")
                 self.output_file.write(
                         "# daq data run from: %s\n" %
-                        self.start_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                        self.start_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
 
                 self.write_status = QtGui.QLabel("Writing to %s" %
                                                  repr(self.output_file))
@@ -1691,7 +1694,7 @@ class DAQWidget(BaseWidget):
             self.measurement_duration += stop_time - self.start_time
 
             self.output_file.write("# stopped run on: %s\n" %
-                                   stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                                   stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
             self.output_file.close()
             self.parent.status_bar.removeWidget(self.write_status)
 
@@ -1740,7 +1743,7 @@ class DAQWidget(BaseWidget):
             self.measurement_duration += stop_time - self.start_time
 
             self.output_file.write("# stopped run on: %s\n" %
-                                   stop_time.strftime("%a %d %b %Y %H:%M:%S %Z"))
+                                   stop_time.strftime("%a %d %b %Y %H:%M:%S UTC"))
             self.output_file.close()
 
         # only rename if file actually exists

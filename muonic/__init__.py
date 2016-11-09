@@ -7,7 +7,8 @@ AUTHORS = [
     ("Robert Franke", "robert.franke@desy.de"),
     ("Achim Stoessl", "achim.stoessl@desy.de"),
     ("Basho Kaminsky", "basho.kaminsky@desy.de"),
-    ("Martin Ohmann", "martin@mohmann.de")
+    ("Martin Ohmann", "martin@mohmann.de"),
+    ("Hans-Peter Bretz", "hans-peter.bretz@desy.de")
 ]
 
 DOC_PATH = path.abspath(path.join(
@@ -17,7 +18,7 @@ DATA_PATH = path.join(getenv('HOME'), 'muonic_data')
 
 __all__ = ["util", "daq", "analysis", "gui"]
 
-__version__ = "2.1.1"
+__version__ = "2.1.0"
 __author__ = ", ".join([author[0] for author in AUTHORS])
 __author_email__ = ", ".join([author[1] for author in AUTHORS])
 

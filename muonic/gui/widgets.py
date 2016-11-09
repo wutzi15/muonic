@@ -1792,6 +1792,8 @@ class GPSWidget(BaseWidget):
         self.altitude_box = QtGui.QLabel("--")
         self.pos_fix_box = QtGui.QLabel("--")
 
+        self.msg_offset = 0
+
         # add widgets to layout
         layout = QtGui.QGridLayout(self)
         layout.addWidget(QtGui.QLabel("GPS Display:"), 0, 0, 1, 4)
@@ -1838,8 +1840,8 @@ class GPSWidget(BaseWidget):
         :type strip_string: str
         :returns: str
         """
-        result = str(self.gps_dump[line]).strip()
-        return result.replace(strip_string, '')
+        result = str(self.gps_dump[line+self.msg_offset]).strip()
+        return result.replace(strip_string, '').strip()
 
     def update(self):
         """
@@ -1847,11 +1849,19 @@ class GPSWidget(BaseWidget):
 
         :returns: bool
         """
+        if len(self.gps_dump) > 0:
+            if not self.gps_dump[0].startswith('DG'):
+                self.gps_dump = []
+                return False
         if len(self.gps_dump) <= self.GPS_DUMP_LENGTH:
             self.gps_dump.append(self.daq_get_last_msg())
         if len(self.gps_dump) != self.GPS_DUMP_LENGTH:
             return False
 
+        # sometimes, the widget will not register the line where the DG command is put
+        if not self.gps_dump[1].startswith('DG'):
+            self.msg_offset = -1
+	
         gps_time = ''
         pos_fix = 0
         latitude = ''
@@ -1871,7 +1881,7 @@ class GPSWidget(BaseWidget):
                 latitude = self._extract_gps_info(5, "Latitude:")
                 longitude = self._extract_gps_info(6, "Longitude:")
                 altitude = self._extract_gps_info(7, "Altitude:")
-                satellites = int(self._extract_gps_info(8, "Stats used:"))
+                satellites = int(self._extract_gps_info(8, "Sats used:"))
 
                 if self._extract_gps_info(12, "ChkSumErr:") == '0':
                     checksum = "No Error"
@@ -1881,8 +1891,8 @@ class GPSWidget(BaseWidget):
                 self.logger.info('Invalid GPS signal.')
 
             self.gps_dump = []
-        except Exception:
-            self.logger.warn('Error evaluating GPS information.')
+        except Exception as e:
+            self.logger.warn('Error evaluating GPS information. Error %s'%str(e))
             self.gps_dump = []
             self.active(False)
             return False

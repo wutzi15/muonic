@@ -174,7 +174,7 @@ class BaseHistogramCanvas(BasePlotCanvas):
             self.heights.append(patch.get_height())
 
         self.logger.debug("Histogram patch heights %s" % self.heights)
-        self.ax.set_ylim(ymax=max(self.heights) * 1.1)
+        self.ax.set_ylim(ymax=max([h+np.sqrt(h) for h in self.heights]) * 1.1)
         self.ax.set_ylim(ymin=0)
         self.ax.set_xlabel(self.xlabel)
         self.ax.set_ylabel(self.ylabel)
@@ -182,6 +182,12 @@ class BaseHistogramCanvas(BasePlotCanvas):
 
         # always get rid of unused stuff
         del tmp_hist
+
+        # try to add errorbars
+        bincenters = (self.binning[1:]+self.binning[:-1])/2.
+        for i, height in enumerate(self.heights):
+            self.ax.errorbar(bincenters[i], height,
+                     yerr=np.sqrt(height), color='b')
 
         # some beautification
         self.ax.grid()

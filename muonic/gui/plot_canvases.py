@@ -223,28 +223,28 @@ class BaseHistogramCanvas(BasePlotCanvas):
         self.ax.lines = []
         self.ax.plot(bin_centers, bincontent, "b^", fitx, decay(p, fitx), "b-")
 
-        # print fit function formula start
-        x = bin_centers
-        y = bincontent
-        poly = pl.polyfit(x, y, 2)
+        ## print fit function formula start
+        #x = bin_centers
+        #y = bincontent
+        #poly = pl.polyfit(x, y, 2)
 
-        def poly2latex(poly, variable="x", width=2):
-          t = ["{0:0.{width}f}"]
-          t.append(t[-1] + " {variable}")
-          t.append(t[-1] + "^{1}")
+        #def poly2latex(poly, variable="x", width=2):
+        #  t = ["{0:0.{width}f}"]
+        #  t.append(t[-1] + " {variable}")
+        #  t.append(t[-1] + "^{1}")
 
-          def f():
-            for i, v in enumerate(reversed(poly)):
-              idx = i if i < 2 else 2
-              yield t[idx].format(v, i, variable=variable, width=width)
+        #  def f():
+        #    for i, v in enumerate(reversed(poly)):
+        #      idx = i if i < 2 else 2
+        #      yield t[idx].format(v, i, variable=variable, width=width)
 
-          return "${}$".format("+".join(f()))
+        #  return "${}$".format("+".join(f()))
 
-        self.ax.plot(x, y, "o", alpha=0.4)
-        x2 = np.linspace(-2, 2, 100)
-        y2 = np.polyval(poly, x2)
-        self.ax.plot(x2, y2, lw=2, color="r")
-        self.ax.text(x2[5], y2[5], poly2latex(poly), fontsize=16)
+        #self.ax.plot(x, y, "o", alpha=0.4)
+        #x2 = np.linspace(-2, 2, 100)
+        #y2 = np.polyval(poly, x2)
+        #self.ax.plot(x2, y2, lw=2, color="r")
+        #self.ax.text(x2[5], y2[5], poly2latex(poly), fontsize=16)
         # print fit function formula end
 
         # FIXME: this seems to crop the histogram

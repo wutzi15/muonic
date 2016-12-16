@@ -22,6 +22,7 @@ from muonic.gui.widgets import DecayWidget, DAQWidget, RateWidget
 from muonic.gui.widgets import GPSWidget, StatusWidget
 from muonic.util import update_setting, get_setting
 from muonic.util import apply_default_settings, get_muonic_filename
+from muonic.util import get_data_directory
 
 
 class Application(QtGui.QMainWindow):
@@ -235,6 +236,14 @@ class Application(QtGui.QMainWindow):
         # create file menu
         file_menu = menu_bar.addMenu('&File')
 
+        muonic_data_action = QtGui.QAction('Open Data Folder', self)
+        muonic_data_action.setStatusTip('Open the folder with the data files written by muonic.')
+        muonic_data_action.setShortcut('Ctrl+O')
+        self.connect(muonic_data_action, QtCore.SIGNAL('triggered()'),
+                     self.open_muonic_data)
+
+        file_menu.addAction(muonic_data_action)
+
         exit_action = QtGui.QAction(QtGui.QIcon(
                 "/usr/share/icons/gnome/24x24/actions/exit.png"), 'Exit', self)
         exit_action.setShortcut('Ctrl+Q')
@@ -278,6 +287,7 @@ class Application(QtGui.QMainWindow):
                      self.sphinxdoc_menu)
 
         commands_action = QtGui.QAction('DAQ Commands', self)
+        commands_action.setShortcut('F1')
         self.connect(commands_action, QtCore.SIGNAL('triggered()'),
                      self.help_menu)
 
@@ -387,6 +397,14 @@ class Application(QtGui.QMainWindow):
 
         self.daq.put('TL')
   
+    def open_muonic_data(self):
+        """
+        Opens the folder with the data files. Usually in $HOME/muonic_data
+        """
+
+        import webbrowser
+        webbrowser.open("file://" + get_data_directory())
+
     def config_menu(self):
         """
         Show the channel config dialog.

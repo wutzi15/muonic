@@ -596,7 +596,7 @@ class PulseAnalyzerWidget(BaseWidget):
         BaseWidget.__init__(self, logger, parent)
 
         self.pulses = None
-        self.pulse_widths = []
+        self.pulse_widths = {i : [] for i in range(4)}
         self.pulse_extractor = pulse_extractor
 
         # setup layout
@@ -610,17 +610,21 @@ class PulseAnalyzerWidget(BaseWidget):
         QtCore.QObject.connect(self.checkbox, QtCore.SIGNAL("clicked()"),
                                self.on_checkbox_clicked)
 
-        self.pulse_canvas = PulseCanvas(self, logger)
-        self.pulse_width_canvas = PulseWidthCanvas(self, logger)
+        self.pulse_width_canvases = []
+        self.pulse_width_toolbars = []
+        for i in range(4):
+            self.pulse_width_canvases.append((PulseWidthCanvas(self, logger, 
+                                                    title="Pulse Widths Ch %d"%i)))
 
-        pulse_toolbar = NavigationToolbar(self.pulse_canvas, self)
-        pulse_width_toolbar = NavigationToolbar(self.pulse_width_canvas, self)
+            self.pulse_width_toolbars.append(NavigationToolbar(self.pulse_width_canvases[-1], self))
 
         layout.addWidget(self.checkbox, 0, 0, 1, 2)
-        layout.addWidget(self.pulse_canvas, 1, 0)
-        layout.addWidget(pulse_toolbar, 2, 0)
-        layout.addWidget(self.pulse_width_canvas, 1, 1)
-        layout.addWidget(pulse_width_toolbar, 2, 1)
+        for i in range(4):
+            cx = i/2 * 2 + 1
+            cy = i%2
+
+            layout.addWidget(self.pulse_width_canvases[i], cx, cy)
+            layout.addWidget(self.pulse_width_toolbars[i], cx+1, cy)
 
     def calculate(self, pulses):
         """
@@ -642,15 +646,15 @@ class PulseAnalyzerWidget(BaseWidget):
         # pulse_widths changed because falling edge can be None.
         # pulse_widths = [fe - le for chan in pulses[1:] for le,fe in chan]
 
-        pulse_widths = []
 
-        for channel in self.pulses[1:]:
+        for i,channel in enumerate(self.pulses[1:]):
+            pulse_widths = self.pulse_widths.get(i, [])
             for le, fe in channel:
                 if fe is not None:
                     pulse_widths.append(fe - le)
                 else:
                     pulse_widths.append(0.)
-        self.pulse_widths += pulse_widths
+            self.pulse_widths[i] = pulse_widths
         
     def update(self):
         """
@@ -661,9 +665,10 @@ class PulseAnalyzerWidget(BaseWidget):
         if not self.active():
             return
 
-        self.pulse_canvas.update_plot(self.pulses)
-        self.pulse_width_canvas.update_plot(self.pulse_widths)
-        self.pulse_widths = []
+        #self.pulse_canvas.update_plot(self.pulses)
+        for i,pwc in enumerate(self.pulse_width_canvases):
+            pwc.update_plot(self.pulse_widths[i])
+        self.pulse_widths = {i : [] for i in range(4)}
 
     def on_checkbox_clicked(self):
         """

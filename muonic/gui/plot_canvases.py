@@ -11,7 +11,6 @@ except ImportError:
     from matplotlib.backends.backend_qt4agg \
         import NavigationToolbar2QT as NavigationToolbar
 
-import pylab as pl
 import numpy as np
 
 
@@ -147,6 +146,7 @@ class BaseHistogramCanvas(BasePlotCanvas):
 
         # avoid memory leak
         self.ax.clear()
+        self.ax.set_title("this is a title.")
 
         # we have to do some bad hacking here,
         # because the p histogram is rather
@@ -534,13 +534,18 @@ class PulseWidthCanvas(BaseHistogramCanvas):
     :param hist_color: the color of the histogram
     :type hist_color: str
     """
-    def __init__(self, parent, logger, hist_color="r"):
+    def __init__(self, parent, logger, hist_color="r", title=None):
         BaseHistogramCanvas.__init__(
                 self, parent, logger, np.linspace(0., 100, 30),
                 hist_color=hist_color, xmin=0., xmax=100, ymin=0, ymax=2,
                 ylabel="Events", xlabel="Pulse Width (ns)")
-        self.ax.set_title("Pulse widths")
+        self.ax_title = title if title is not None else "Pulse Widths"
+        self.ax.set_title(self.ax_title)
+        self.ax.figure.tight_layout()
+        self.fig.canvas.draw()
 
     def update_plot(self, data):
         BaseHistogramCanvas.update_plot(self, data)
-        self.ax.set_title("Pulse widths")
+        self.ax.set_title(self.ax_title)
+        self.ax.figure.tight_layout()
+        self.fig.canvas.draw()

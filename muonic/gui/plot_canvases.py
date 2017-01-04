@@ -40,7 +40,7 @@ class BasePlotCanvas(FigureCanvas):
     """
 
     def __init__(self, parent, logger, ymin=0, ymax=10, xmin=0, xmax=10,
-                 xlabel="xlabel", ylabel="ylabel", grid=True,
+                 xlabel="xlabel", ylabel="ylabel", grid=True, title=None,
                  spacing=(0.1, 0.9)):
 
         self.logger = logger
@@ -67,6 +67,7 @@ class BasePlotCanvas(FigureCanvas):
         self.xlabel = xlabel
         self.ylabel = ylabel
 
+        self.title = None
         # force a redraw of the Figure
         self.fig.canvas.draw()
         self.setParent(parent)
@@ -131,7 +132,8 @@ class BaseHistogramCanvas(BasePlotCanvas):
 
         # avoid memory leak
         self.ax.clear()
-        self.ax.set_title("this is a title.")
+        if self.title is not None:
+            self.ax.set_title(self.title)
 
         # we have to do some bad hacking here,
         # because the p histogram is rather

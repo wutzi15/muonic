@@ -251,11 +251,21 @@ class BaseHistogramCanvas(BasePlotCanvas):
         perr_leastsq = np.array(error)
 
         try:
+            if chisquare / (nbins-len(p)) > 10000:
+                self.ax.legend(("Data", ("Fit: (%4.2f $\pm$ %4.2f) %s \n" +
+                                     " chisq/ndf=%.4g") %
+                            (p[2], perr_leastsq[2], self.dimension,
+                             chisquare / (nbins-len(p)))), loc=1)
             self.ax.legend(("Data", ("Fit: (%4.2f $\pm$ %4.2f) %s \n" +
                                      " chisq/ndf=%4.2f") %
                             (p[2], perr_leastsq[2], self.dimension,
                              chisquare / (nbins-len(p)))), loc=1)
         except TypeError:
+            if chisquare / (nbins-len(p)) > 10000:
+                self.ax.legend(("Data", ("Fit: (%4.2f $\pm$ %4.2f) %s \n" +
+                                     " chisq/ndf=%.4g") %
+                            (p[2], perr_leastsq[2], self.dimension,
+                             chisquare / (nbins-len(p)))), loc=1)
             self.logger.warn("Covariance Matrix is 'None', could " +
                              "not calculate fit error!")
             self.ax.legend(("Data", ("Fit: (%4.2f) %s \n " +

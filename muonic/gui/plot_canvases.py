@@ -71,21 +71,6 @@ class BasePlotCanvas(FigureCanvas):
         self.fig.canvas.draw()
         self.setParent(parent)
 
-    # FIXME: is this of any use here? remove?
-    @staticmethod
-    def color(string, color="none"):
-        """
-        Color string via ANSI escape sequences
-
-        :param string: the string to color
-        :type string: str
-        :param color: the color of the string, eg.: 'blue', 'green'
-        :type color: str
-        :returns: str
-        """
-        colors = {"green": '\033[92m', "yellow": '\033[93m',
-                  "red": '\033[91m', "blue": '\033[94m', "none": '\033[0m'}
-        return colors[color] + string + colors["none"]
 
     def update_plot(self, *args):
         """

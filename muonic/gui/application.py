@@ -219,8 +219,7 @@ class Application(QtGui.QMainWindow):
         self.logger.info("Screen with size %i x %i detected!" %
                          (screen_x, screen_y))
 
-        # FIXME: make it configurable
-        # now simply set to 1600 x 1200
+        # Screens lager than 1600*1200 use large plot style.
         if screen_x * screen_y >= 1920000:
             set_large_plot_style()
 

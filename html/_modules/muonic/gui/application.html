@@ -1,0 +1,985 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>muonic.gui.application &mdash; muonic 3.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/pyramid.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '3.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="muonic 3.0.0 documentation" href="../../../index.html" />
+    <link rel="up" title="muonic.gui" href="../gui.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="../../../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head>
+  <body>
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">muonic 3.0.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../gui.html" accesskey="U">muonic.gui</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for muonic.gui.application</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Provides the main window for the gui part of muonic</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">os</span> <span class="kn">import</span> <span class="n">path</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">webbrowser</span>
+
+<span class="kn">from</span> <span class="nn">PyQt4</span> <span class="kn">import</span> <span class="n">QtGui</span>
+<span class="kn">from</span> <span class="nn">PyQt4</span> <span class="kn">import</span> <span class="n">QtCore</span>
+
+<span class="kn">from</span> <span class="nn">muonic</span> <span class="kn">import</span> <span class="n">__version__</span><span class="p">,</span> <span class="n">__source_location__</span>
+<span class="kn">from</span> <span class="nn">muonic</span> <span class="kn">import</span> <span class="n">__docs_hosted_at__</span><span class="p">,</span> <span class="n">__manual_hosted_at__</span>
+<span class="kn">from</span> <span class="nn">muonic.analysis</span> <span class="kn">import</span> <span class="n">PulseExtractor</span>
+<span class="kn">from</span> <span class="nn">muonic.daq</span> <span class="kn">import</span> <span class="n">DAQIOError</span>
+<span class="kn">from</span> <span class="nn">muonic.gui.helpers</span> <span class="kn">import</span> <span class="n">set_large_plot_style</span>
+<span class="kn">from</span> <span class="nn">muonic.gui.dialogs</span> <span class="kn">import</span> <span class="n">ThresholdDialog</span><span class="p">,</span> <span class="n">ConfigDialog</span>
+<span class="kn">from</span> <span class="nn">muonic.gui.dialogs</span> <span class="kn">import</span> <span class="n">HelpDialog</span><span class="p">,</span> <span class="n">AdvancedDialog</span>
+<span class="kn">from</span> <span class="nn">muonic.gui.widgets</span> <span class="kn">import</span> <span class="n">VelocityWidget</span><span class="p">,</span> <span class="n">PulseAnalyzerWidget</span>
+<span class="kn">from</span> <span class="nn">muonic.gui.widgets</span> <span class="kn">import</span> <span class="n">DecayWidget</span><span class="p">,</span> <span class="n">DAQWidget</span><span class="p">,</span> <span class="n">RateWidget</span>
+<span class="kn">from</span> <span class="nn">muonic.gui.widgets</span> <span class="kn">import</span> <span class="n">GPSWidget</span><span class="p">,</span> <span class="n">StatusWidget</span>
+<span class="kn">from</span> <span class="nn">muonic.util</span> <span class="kn">import</span> <span class="n">update_setting</span><span class="p">,</span> <span class="n">get_setting</span>
+<span class="kn">from</span> <span class="nn">muonic.util</span> <span class="kn">import</span> <span class="n">apply_default_settings</span><span class="p">,</span> <span class="n">get_muonic_filename</span>
+<span class="kn">from</span> <span class="nn">muonic.util</span> <span class="kn">import</span> <span class="n">get_data_directory</span>
+
+
+<div class="viewcode-block" id="Application"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application">[docs]</a><span class="k">class</span> <span class="nc">Application</span><span class="p">(</span><span class="n">QtGui</span><span class="o">.</span><span class="n">QMainWindow</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The main application</span>
+
+<span class="sd">    :param daq: daq card connection</span>
+<span class="sd">    :type daq: muonic.daq.provider.BaseDAQProvider</span>
+<span class="sd">    :param logger: logger object</span>
+<span class="sd">    :type logger: logging.Logger</span>
+<span class="sd">    :param opts: command line options</span>
+<span class="sd">    :type opts: Namespace</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">daq</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">opts</span><span class="p">):</span>
+        <span class="n">QtGui</span><span class="o">.</span><span class="n">QMainWindow</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># start time of the application</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span>
+
+        <span class="c"># apply default settings first</span>
+        <span class="n">apply_default_settings</span><span class="p">()</span>
+
+        <span class="n">QtCore</span><span class="o">.</span><span class="n">QLocale</span><span class="o">.</span><span class="n">setDefault</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">QLocale</span><span class="p">(</span><span class="s">&quot;en_us&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowTitle</span><span class="p">(</span><span class="s">&quot;muonic&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setWindowIcon</span><span class="p">(</span><span class="n">QtGui</span><span class="o">.</span><span class="n">QIcon</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">__file__</span><span class="p">),</span>
+                                                   <span class="s">&quot;muonic.xpm&quot;</span><span class="p">)))</span>
+
+        <span class="c"># params</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span> <span class="o">=</span> <span class="n">daq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opts</span> <span class="o">=</span> <span class="n">opts</span>
+
+        <span class="c"># tab widget to hold the different physics widgets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tab_widget</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QTabWidget</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># widget store for the tab widgets to reference later</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_widgets</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="c"># setup status bar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_bar</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QMainWindow</span><span class="o">.</span><span class="n">statusBar</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c"># last daq message</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_daq_msg</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="c"># detected pulses</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pulses</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="c"># generate filenames</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rate_filename</span> <span class="o">=</span> <span class="n">get_muonic_filename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                                                 <span class="s">&quot;R&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">user</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw_filename</span> <span class="o">=</span> <span class="n">get_muonic_filename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                                                <span class="s">&quot;DAQ&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">user</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decay_filename</span> <span class="o">=</span> <span class="n">get_muonic_filename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                                                  <span class="s">&quot;D&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">user</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">velocity_filename</span> <span class="o">=</span> <span class="n">get_muonic_filename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                                                     <span class="s">&quot;V&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">user</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pulse_filename</span> <span class="o">=</span> <span class="n">get_muonic_filename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                                                  <span class="s">&quot;P&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">user</span><span class="p">)</span>
+
+        <span class="c"># store command line settings</span>
+        <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;write_pulses&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">write_pulses</span><span class="p">)</span>
+        <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;write_daq_status&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">write_daq_status</span><span class="p">)</span>
+        <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;time_window&quot;</span><span class="p">,</span> <span class="n">opts</span><span class="o">.</span><span class="n">time_window</span><span class="p">)</span>
+
+        <span class="c"># we have to ensure that the DAQ card does not sent any automatic</span>
+        <span class="c"># status reports every x seconds if &#39;write_daq_status&#39; is set to False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">opts</span><span class="o">.</span><span class="n">write_daq_status</span><span class="p">:</span>
+            <span class="c"># disable status reporting</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&#39;ST 0&#39;</span><span class="p">)</span>
+
+        <span class="c"># get the last configuration from the card</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_configuration_from_daq_card</span><span class="p">()</span>
+
+        <span class="c"># create pulse extractor for direct analysis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span> <span class="o">=</span> <span class="n">PulseExtractor</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pulse_filename</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">opts</span><span class="o">.</span><span class="n">write_pulses</span><span class="p">:</span>
+            <span class="c"># write pulses to file all the time</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&#39;CE&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span><span class="o">.</span><span class="n">write_pulses</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="c"># create tabbed widgets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_tab_widgets</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setCentralWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tab_widget</span><span class="p">)</span>
+
+        <span class="c"># widgets which should be calculated in process_incoming.</span>
+        <span class="c"># The widget is only calculated when it is set to active (True)</span>
+        <span class="c"># via widget.active(True). only widgets which need pulses go here</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pulse_widgets</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;pulse&quot;</span><span class="p">),</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;decay&quot;</span><span class="p">),</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;velocity&quot;</span><span class="p">)]</span>
+
+        <span class="c"># widgets which should be dynamically updated by the timer</span>
+        <span class="c"># should be in this list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_widgets</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;rate&quot;</span><span class="p">),</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;pulse&quot;</span><span class="p">),</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;decay&quot;</span><span class="p">),</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;velocity&quot;</span><span class="p">)]</span>
+
+        <span class="c"># timer to periodically call processIncoming and check</span>
+        <span class="c"># what is in the queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+        <span class="n">QtCore</span><span class="o">.</span><span class="n">QObject</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="p">,</span>
+                               <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&quot;timeout()&quot;</span><span class="p">),</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">process_incoming</span><span class="p">)</span>
+
+        <span class="c"># time update widgets the have dynamic plots in them</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">widget_updater</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+        <span class="n">QtCore</span><span class="o">.</span><span class="n">QObject</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">widget_updater</span><span class="p">,</span>
+                               <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&quot;timeout()&quot;</span><span class="p">),</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">update_dynamic</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Time window is </span><span class="si">%4.2f</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">opts</span><span class="o">.</span><span class="n">time_window</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_plot_style</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_menus</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_incoming</span><span class="p">()</span>
+
+        <span class="c"># start update timers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">widget_updater</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">opts</span><span class="o">.</span><span class="n">time_window</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Application.get_configuration_from_daq_card"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.get_configuration_from_daq_card">[docs]</a>    <span class="k">def</span> <span class="nf">get_configuration_from_daq_card</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the initial threshold and channel configuration</span>
+<span class="sd">        from the DAQ card.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># get the thresholds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&#39;TL&#39;</span><span class="p">)</span>
+        <span class="c"># give the daq some time to react</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">data_available</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_thresholds_from_msg</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="n">DAQIOError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Queue empty!&quot;</span><span class="p">)</span>
+
+        <span class="c"># get the channel config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&#39;DC&#39;</span><span class="p">)</span>
+        <span class="c"># give the daq some time to react</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">data_available</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">get_channels_from_msg</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="n">DAQIOError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Queue empty!&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.setup_tab_widgets"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.setup_tab_widgets">[docs]</a>    <span class="k">def</span> <span class="nf">setup_tab_widgets</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates the widgets and adds tabs</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;rate&quot;</span><span class="p">,</span> <span class="s">&quot;Muon Rates&quot;</span><span class="p">,</span>
+                        <span class="n">RateWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rate_filename</span><span class="p">,</span>
+                                   <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;pulse&quot;</span><span class="p">,</span> <span class="s">&quot;Pulse Analyzer&quot;</span><span class="p">,</span>
+                        <span class="n">PulseAnalyzerWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span><span class="p">,</span>
+                                            <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;decay&quot;</span><span class="p">,</span> <span class="s">&quot;Muon Decay&quot;</span><span class="p">,</span>
+                        <span class="n">DecayWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">decay_filename</span><span class="p">,</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;velocity&quot;</span><span class="p">,</span> <span class="s">&quot;Muon Velocity&quot;</span><span class="p">,</span>
+                        <span class="n">VelocityWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">velocity_filename</span><span class="p">,</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;status&quot;</span><span class="p">,</span> <span class="s">&quot;Status&quot;</span><span class="p">,</span>
+                        <span class="n">StatusWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;daq&quot;</span><span class="p">,</span> <span class="s">&quot;DAQ Output&quot;</span><span class="p">,</span>
+                        <span class="n">DAQWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw_filename</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_widget</span><span class="p">(</span><span class="s">&quot;gps&quot;</span><span class="p">,</span> <span class="s">&quot;GPS Output&quot;</span><span class="p">,</span>
+                        <span class="n">GPSWidget</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Application.setup_plot_style"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.setup_plot_style">[docs]</a>    <span class="k">def</span> <span class="nf">setup_plot_style</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup the plot style depending on screen size.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">desktop</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QDesktopWidget</span><span class="p">()</span>
+        <span class="n">screen_size</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QRectF</span><span class="p">(</span><span class="n">desktop</span><span class="o">.</span><span class="n">screenGeometry</span><span class="p">(</span>
+                <span class="n">desktop</span><span class="o">.</span><span class="n">primaryScreen</span><span class="p">()))</span>
+        <span class="n">screen_x</span> <span class="o">=</span> <span class="n">screen_size</span><span class="o">.</span><span class="n">x</span><span class="p">()</span> <span class="o">+</span> <span class="n">screen_size</span><span class="o">.</span><span class="n">width</span><span class="p">()</span>
+        <span class="n">screen_y</span> <span class="o">=</span> <span class="n">screen_size</span><span class="o">.</span><span class="n">y</span><span class="p">()</span> <span class="o">+</span> <span class="n">screen_size</span><span class="o">.</span><span class="n">height</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Screen with size </span><span class="si">%i</span><span class="s"> x </span><span class="si">%i</span><span class="s"> detected!&quot;</span> <span class="o">%</span>
+                         <span class="p">(</span><span class="n">screen_x</span><span class="p">,</span> <span class="n">screen_y</span><span class="p">))</span>
+
+        <span class="c"># Screens lager than 1600*1200 use large plot style.</span>
+        <span class="k">if</span> <span class="n">screen_x</span> <span class="o">*</span> <span class="n">screen_y</span> <span class="o">&gt;=</span> <span class="mi">1920000</span><span class="p">:</span>
+            <span class="n">set_large_plot_style</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Application.setup_menus"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.setup_menus">[docs]</a>    <span class="k">def</span> <span class="nf">setup_menus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Setup the menu bar and populate menus.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># create the menubar</span>
+        <span class="n">menu_bar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">menuBar</span><span class="p">()</span>
+
+        <span class="c"># create file menu</span>
+        <span class="n">file_menu</span> <span class="o">=</span> <span class="n">menu_bar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s">&#39;&amp;File&#39;</span><span class="p">)</span>
+
+        <span class="n">muonic_data_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;Open Data Folder&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">muonic_data_action</span><span class="o">.</span><span class="n">setStatusTip</span><span class="p">(</span><span class="s">&#39;Open the folder with the data files written by muonic.&#39;</span><span class="p">)</span>
+        <span class="n">muonic_data_action</span><span class="o">.</span><span class="n">setShortcut</span><span class="p">(</span><span class="s">&#39;Ctrl+O&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">muonic_data_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">open_muonic_data</span><span class="p">)</span>
+
+        <span class="n">file_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">muonic_data_action</span><span class="p">)</span>
+
+        <span class="n">exit_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="n">QtGui</span><span class="o">.</span><span class="n">QIcon</span><span class="p">(</span>
+                <span class="s">&quot;/usr/share/icons/gnome/24x24/actions/exit.png&quot;</span><span class="p">),</span> <span class="s">&#39;Exit&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">exit_action</span><span class="o">.</span><span class="n">setShortcut</span><span class="p">(</span><span class="s">&#39;Ctrl+Q&#39;</span><span class="p">)</span>
+        <span class="n">exit_action</span><span class="o">.</span><span class="n">setStatusTip</span><span class="p">(</span><span class="s">&#39;Exit application&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">exit_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="n">QtCore</span><span class="o">.</span><span class="n">SLOT</span><span class="p">(</span><span class="s">&#39;close()&#39;</span><span class="p">))</span>
+
+        <span class="n">file_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">exit_action</span><span class="p">)</span>
+
+        <span class="c"># create settings menu</span>
+        <span class="n">settings_menu</span> <span class="o">=</span> <span class="n">menu_bar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s">&#39;&amp;Settings&#39;</span><span class="p">)</span>
+
+        <span class="n">config_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;Channel Configuration&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">config_action</span><span class="o">.</span><span class="n">setStatusTip</span><span class="p">(</span><span class="s">&#39;Configure the Coincidences and channels&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">config_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">config_menu</span><span class="p">)</span>
+
+        <span class="n">thresholds_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;Thresholds&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">thresholds_action</span><span class="o">.</span><span class="n">setStatusTip</span><span class="p">(</span><span class="s">&#39;Set trigger thresholds&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">thresholds_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">threshold_menu</span><span class="p">)</span>
+
+        <span class="n">advanced_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;Advanced Configurations&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">advanced_action</span><span class="o">.</span><span class="n">setStatusTip</span><span class="p">(</span><span class="s">&#39;Advanced configurations&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">advanced_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">advanced_menu</span><span class="p">)</span>
+
+        <span class="n">settings_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">config_action</span><span class="p">)</span>
+        <span class="n">settings_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">thresholds_action</span><span class="p">)</span>
+        <span class="n">settings_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">advanced_action</span><span class="p">)</span>
+
+        <span class="c"># create help menu</span>
+        <span class="n">help_menu</span> <span class="o">=</span> <span class="n">menu_bar</span><span class="o">.</span><span class="n">addMenu</span><span class="p">(</span><span class="s">&#39;&amp;Help&#39;</span><span class="p">)</span>
+
+        <span class="n">manualdoc_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;Website with Manual&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">manualdoc_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">manualdoc_menu</span><span class="p">)</span>
+
+        <span class="n">sphinxdoc_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;Technical documentation&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">sphinxdoc_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">sphinxdoc_menu</span><span class="p">)</span>
+
+        <span class="n">commands_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;DAQ Commands&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">commands_action</span><span class="o">.</span><span class="n">setShortcut</span><span class="p">(</span><span class="s">&#39;F1&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">commands_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">help_menu</span><span class="p">)</span>
+
+        <span class="n">about_action</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QAction</span><span class="p">(</span><span class="s">&#39;About muonic&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">about_action</span><span class="p">,</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;triggered()&#39;</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">about_menu</span><span class="p">)</span>
+
+        <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">manualdoc_action</span><span class="p">)</span>
+        <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">commands_action</span><span class="p">)</span>
+        <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">sphinxdoc_action</span><span class="p">)</span>
+        <span class="n">help_menu</span><span class="o">.</span><span class="n">addAction</span><span class="p">(</span><span class="n">about_action</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.add_widget"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.add_widget">[docs]</a>    <span class="k">def</span> <span class="nf">add_widget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">widget</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds widget to the store.</span>
+
+<span class="sd">        Raises WidgetWithNameExistsError if a widget of that name already</span>
+<span class="sd">        exists and TypeError if widget is no subclass of QtGui.QWidget.</span>
+
+<span class="sd">        :param name: widget name</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        :param label: the tab label</span>
+<span class="sd">        :type label: str</span>
+<span class="sd">        :param widget: widget object</span>
+<span class="sd">        :type widget: object</span>
+<span class="sd">        :returns: None</span>
+<span class="sd">        :raises: WidgetWithNameExistsError, TypeError</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">widget</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_widget</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">WidgetWithNameExistsError</span><span class="p">(</span>
+                    <span class="s">&quot;widget with name &#39;</span><span class="si">%s</span><span class="s">&#39; already exists&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">widget</span><span class="p">,</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QWidget</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;widget has to be a subclass &#39;QtGui.QWidget&#39;&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tab_widget</span><span class="o">.</span><span class="n">addTab</span><span class="p">(</span><span class="n">widget</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_widgets</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">widget</span>
+</div>
+<div class="viewcode-block" id="Application.have_widget"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.have_widget">[docs]</a>    <span class="k">def</span> <span class="nf">have_widget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns true if widget with name exists, False otherwise.</span>
+
+<span class="sd">        :param name: widget name</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        :returns: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_widgets</span>
+</div>
+<div class="viewcode-block" id="Application.get_widget"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.get_widget">[docs]</a>    <span class="k">def</span> <span class="nf">get_widget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieved a widget from the store.</span>
+
+<span class="sd">        :param name: widget name</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        :returns: object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_widgets</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.is_widget_active"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.is_widget_active">[docs]</a>    <span class="k">def</span> <span class="nf">is_widget_active</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns True if the widget exists and is active, False otherwise</span>
+
+<span class="sd">        :param name: widget name</span>
+<span class="sd">        :type name: str</span>
+<span class="sd">        :returns: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_widget</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">active</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="Application.threshold_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.threshold_menu">[docs]</a>    <span class="k">def</span> <span class="nf">threshold_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Shows thresholds dialog.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># get the actual thresholds from the DAQ card</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&#39;TL&#39;</span><span class="p">)</span>
+
+        <span class="c"># wait explicitly until the thresholds get loaded</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;loading threshold information..&quot;</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
+
+        <span class="c"># get thresholds from settings</span>
+        <span class="n">thresholds</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+
+        <span class="c"># show dialog</span>
+        <span class="n">dialog</span> <span class="o">=</span> <span class="n">ThresholdDialog</span><span class="p">(</span><span class="n">thresholds</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dialog</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">commands</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="c"># update thresholds config</span>
+            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span><span class="s">&quot;threshold_ch_</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">ch</span><span class="p">)</span>
+                <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">ch</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+                <span class="n">commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&quot;TL </span><span class="si">%d</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ch</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+
+            <span class="c"># apply new thresholds to daq card</span>
+            <span class="k">for</span> <span class="n">cmd</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Set threshold of channel </span><span class="si">%s</span><span class="s"> to </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span>
+                                 <span class="p">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">1</span><span class="p">],</span> <span class="n">cmd</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">2</span><span class="p">]))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&#39;TL&#39;</span><span class="p">)</span>
+  </div>
+<div class="viewcode-block" id="Application.open_muonic_data"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.open_muonic_data">[docs]</a>    <span class="k">def</span> <span class="nf">open_muonic_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Opens the folder with the data files. Usually in $HOME/muonic_data</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="kn">import</span> <span class="nn">webbrowser</span>
+        <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s">&quot;file://&quot;</span> <span class="o">+</span> <span class="n">get_data_directory</span><span class="p">())</span>
+</div>
+<div class="viewcode-block" id="Application.config_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.config_menu">[docs]</a>    <span class="k">def</span> <span class="nf">config_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show the channel config dialog.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># get the actual channels from the DAQ card</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&quot;DC&quot;</span><span class="p">)</span>
+
+        <span class="c"># wait explicitly until the channels get loaded</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;loading channel information...&quot;</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c"># get current config values</span>
+        <span class="n">channel_config</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;active_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+        <span class="n">coincidence_config</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;coincidence</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+                              <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+        <span class="n">veto</span> <span class="o">=</span> <span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;veto&quot;</span><span class="p">)</span>
+        <span class="n">veto_config</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;veto_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
+
+        <span class="c"># show dialog</span>
+        <span class="n">dialog</span> <span class="o">=</span> <span class="n">ConfigDialog</span><span class="p">(</span><span class="n">channel_config</span><span class="p">,</span> <span class="n">coincidence_config</span><span class="p">,</span>
+                              <span class="n">veto</span><span class="p">,</span> <span class="n">veto_config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dialog</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+
+            <span class="c"># get and update channel and coincidence config</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">channel_config</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span>
+                        <span class="s">&quot;channel_checkbox_</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+                <span class="n">coincidence_config</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span>
+                        <span class="s">&quot;coincidence_checkbox_</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+
+                <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;active_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span> <span class="n">channel_config</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;coincidence</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span> <span class="n">coincidence_config</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="c"># get and update veto state</span>
+            <span class="n">veto</span> <span class="o">=</span> <span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span><span class="s">&quot;veto_checkbox&quot;</span><span class="p">)</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;veto&quot;</span><span class="p">,</span> <span class="n">veto</span><span class="p">)</span>
+
+            <span class="c"># get and update veto channel config</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                <span class="n">veto_config</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span>
+                        <span class="s">&quot;veto_checkbox_</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+
+                <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;veto_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span> <span class="n">veto_config</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="c"># build daq message to apply the new config to the card</span>
+            <span class="n">tmp_msg</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+            <span class="k">if</span> <span class="n">veto</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">veto_config</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                    <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="s">&quot;01&quot;</span>
+                <span class="k">elif</span> <span class="n">veto_config</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="s">&quot;10&quot;</span>
+                <span class="k">elif</span> <span class="n">veto_config</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+                    <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="s">&quot;11&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="s">&quot;00&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="s">&quot;00&quot;</span>
+
+            <span class="n">coincidence_set</span> <span class="o">=</span> <span class="bp">False</span>
+
+            <span class="c"># singles, twofold, threefold, fourfold</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">coincidence</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="s">&quot;00&quot;</span><span class="p">,</span> <span class="s">&quot;01&quot;</span><span class="p">,</span> <span class="s">&quot;10&quot;</span><span class="p">,</span> <span class="s">&quot;11&quot;</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="n">coincidence_config</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="n">coincidence</span>
+                    <span class="n">coincidence_set</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">coincidence_set</span><span class="p">:</span>
+                <span class="n">tmp_msg</span> <span class="o">+=</span> <span class="s">&quot;00&quot;</span>
+    
+            <span class="c"># now calculate the correct expression for the first</span>
+            <span class="c"># four bits</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;The first four bits are set to </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">tmp_msg</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s">&quot;WC 00 </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">hex</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmp_msg</span><span class="p">),</span> <span class="mi">2</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+    
+            <span class="n">channel_set</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="n">enable</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="s">&#39;0&#39;</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">active</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">channel_config</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="n">active</span><span class="p">:</span>
+                    <span class="n">enable</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;1&#39;</span>
+                    <span class="n">channel_set</span> <span class="o">=</span> <span class="bp">True</span>
+            
+            <span class="k">if</span> <span class="n">channel_set</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">+=</span> <span class="nb">hex</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">enable</span><span class="p">),</span> <span class="mi">2</span><span class="p">))[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;0&#39;</span>
+
+            <span class="c"># send the message to the daq card</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;The following message was sent to DAQ: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">msg</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;channel</span><span class="si">%d</span><span class="s"> selected </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span>
+                                  <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">channel_config</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="s">&quot;singles&quot;</span><span class="p">,</span> <span class="s">&quot;twofold&quot;</span><span class="p">,</span>
+                                      <span class="s">&quot;threefold&quot;</span><span class="p">,</span> <span class="s">&quot;fourfold&quot;</span><span class="p">]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;coincidence </span><span class="si">%s</span><span class="s"> </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span>
+                                  <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">coincidence_config</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&quot;DC&quot;</span><span class="p">)</span>
+           </div>
+<div class="viewcode-block" id="Application.advanced_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.advanced_menu">[docs]</a>    <span class="k">def</span> <span class="nf">advanced_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a config dialog for advanced options, ie. gate width,</span>
+<span class="sd">        interval for the rate measurement, options for writing pulse file</span>
+<span class="sd">        and the write_daq_status option.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c"># get the actual channels from the DAQ card</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&quot;DC&quot;</span><span class="p">)</span>
+
+        <span class="c"># wait explicitly until the channels get loaded</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;loading channel information...&quot;</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c"># show dialog</span>
+        <span class="n">dialog</span> <span class="o">=</span> <span class="n">AdvancedDialog</span><span class="p">(</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;gate_width&quot;</span><span class="p">),</span>
+                                <span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;time_window&quot;</span><span class="p">),</span>
+                                <span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;write_daq_status&quot;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">dialog</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c"># update time window</span>
+            <span class="n">time_window</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span><span class="s">&quot;time_window&quot;</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">time_window</span> <span class="o">&lt;</span> <span class="mf">0.01</span> <span class="ow">or</span> <span class="n">time_window</span> <span class="o">&gt;</span> <span class="mf">10000.</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Time window too small or too big, &quot;</span> <span class="o">+</span>
+                                    <span class="s">&quot;resetting to 5 s.&quot;</span><span class="p">)</span>
+                <span class="n">time_window</span> <span class="o">=</span> <span class="mf">5.0</span>
+
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;time_window&quot;</span><span class="p">,</span> <span class="n">time_window</span><span class="p">)</span>
+
+            <span class="c"># update write_daq_status</span>
+            <span class="n">write_daq_status</span> <span class="o">=</span> <span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span><span class="s">&quot;write_daq_status&quot;</span><span class="p">)</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;write_daq_status&quot;</span><span class="p">,</span> <span class="n">write_daq_status</span><span class="p">)</span>
+
+            <span class="c"># update gate width</span>
+            <span class="n">gate_width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">dialog</span><span class="o">.</span><span class="n">get_widget_value</span><span class="p">(</span><span class="s">&quot;gate_width&quot;</span><span class="p">))</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;gate_width&quot;</span><span class="p">,</span> <span class="n">gate_width</span><span class="p">)</span>
+
+            <span class="c"># transform gate width for daq msg</span>
+            <span class="n">gate_width</span> <span class="o">=</span> <span class="nb">bin</span><span class="p">(</span><span class="n">gate_width</span> <span class="o">//</span> <span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s">&#39;0b&#39;</span><span class="p">,</span> <span class="s">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+            <span class="n">gate_width_03</span> <span class="o">=</span> <span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">gate_width</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">8</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span> <span class="s">&#39;x&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">gate_width_02</span> <span class="o">=</span> <span class="n">format</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">gate_width</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">16</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span> <span class="s">&#39;x&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="c"># set gate widths</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&quot;WC 03 </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">gate_width_03</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&quot;WC 02 </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">gate_width_02</span><span class="p">)</span>
+
+            <span class="c"># adjust the update interval</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">widget_updater</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">time_window</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Writing gate width WC 02 </span><span class="si">%s</span><span class="s"> WC 03 </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span>
+                              <span class="p">(</span><span class="n">gate_width_02</span><span class="p">,</span> <span class="n">gate_width_03</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Setting time window to </span><span class="si">%.2f</span><span class="s"> &quot;</span> <span class="o">%</span> <span class="n">time_window</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Switching write_daq_status option to </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span>
+                              <span class="n">write_daq_status</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s">&quot;DC&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.help_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.help_menu">[docs]</a>    <span class="k">def</span> <span class="nf">help_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a simple help dialog.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">HelpDialog</span><span class="p">()</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="Application.about_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.about_menu">[docs]</a>    <span class="k">def</span> <span class="nf">about_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show a link to the online documentation.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">QtGui</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">information</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;about muonic&quot;</span><span class="p">,</span>
+                                      <span class="s">&quot;version: </span><span class="si">%s</span><span class="se">\n</span><span class="s"> source located at: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span>
+                                      <span class="p">(</span><span class="n">__version__</span><span class="p">,</span> <span class="n">__source_location__</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="Application.sphinxdoc_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.sphinxdoc_menu">[docs]</a>    <span class="k">def</span> <span class="nf">sphinxdoc_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show the sphinx documentation that comes with muonic in a</span>
+<span class="sd">        browser.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">docs</span> <span class="o">=</span> <span class="n">__docs_hosted_at__</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Opening docs from </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">docs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Can not open webbrowser! &quot;</span> <span class="o">+</span>
+                                <span class="s">&quot;Browse to </span><span class="si">%s</span><span class="s"> to see the docs&quot;</span> <span class="o">%</span> <span class="n">docs</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.manualdoc_menu"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.manualdoc_menu">[docs]</a>    <span class="k">def</span> <span class="nf">manualdoc_menu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Show the manual that comes with muonic in a pdf viewer.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">docs</span> <span class="o">=</span> <span class="n">__manual_hosted_at__</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Opening docs from </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">docs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">docs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&quot;Can not open PDF reader!&quot;</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.get_thresholds_from_msg"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.get_thresholds_from_msg">[docs]</a>    <span class="k">def</span> <span class="nf">get_thresholds_from_msg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Explicitly scan message for threshold information.</span>
+
+<span class="sd">        Return True if found, False otherwise.</span>
+
+<span class="sd">        :param msg: daq message</span>
+<span class="sd">        :type msg: str</span>
+<span class="sd">        :returns: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;TL&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">)</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch0&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="mi">1</span><span class="p">][:</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch1&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="mi">2</span><span class="p">][:</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch2&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="mi">3</span><span class="p">][:</span><span class="o">-</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch3&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="mi">4</span><span class="p">]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got Thresholds </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span>
+                              <span class="nb">tuple</span><span class="p">([</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;threshold_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+                                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]))</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+        </div>
+<div class="viewcode-block" id="Application.get_channels_from_msg"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.get_channels_from_msg">[docs]</a>    <span class="k">def</span> <span class="nf">get_channels_from_msg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Explicitly scan message for channel information.</span>
+
+<span class="sd">        Return True if found, False otherwise.</span>
+
+<span class="sd">        DC gives:</span>
+
+<span class="sd">        DC C0=23 C1=71 C2=0A C3=00</span>
+<span class="sd">        </span>
+<span class="sd">        Which has the meaning:</span>
+
+<span class="sd">        MM - 00 -&gt; 8bits for channel enable/disable, coincidence and veto</span>
+
+<span class="sd">        +---------------------------------------------------------------------+</span>
+<span class="sd">        |                              bits                                   |</span>
+<span class="sd">        +====+====+===========+===========+========+========+========+========+</span>
+<span class="sd">        |7   |6   |5          |4          |3       |2       |1       |0       |</span>
+<span class="sd">        +----+----+-----------+-----------+--------+--------+--------+--------+</span>
+<span class="sd">        |veto|veto|coincidence|coincidence|channel3|channel2|channel1|channel0|</span>
+<span class="sd">        +----+----+-----------+-----------+--------+--------+--------+--------+</span>
+
+<span class="sd">        +-----------------+</span>
+<span class="sd">        |Set bits for veto|</span>
+<span class="sd">        +=================+</span>
+<span class="sd">        |00 - ch0 is veto |</span>
+<span class="sd">        +-----------------+</span>
+<span class="sd">        |01 - ch1 is veto |</span>
+<span class="sd">        +-----------------+</span>
+<span class="sd">        |10 - ch2 is veto |</span>
+<span class="sd">        +-----------------+</span>
+<span class="sd">        |11 - ch3 is veto |</span>
+<span class="sd">        +-----------------+</span>
+
+<span class="sd">        +------------------------+</span>
+<span class="sd">        |Set bits for coincidence|</span>
+<span class="sd">        +========================+</span>
+<span class="sd">        |00 - singles            |</span>
+<span class="sd">        +------------------------+</span>
+<span class="sd">        |01 - twofold            |</span>
+<span class="sd">        +------------------------+</span>
+<span class="sd">        |10 - threefold          |</span>
+<span class="sd">        +------------------------+</span>
+<span class="sd">        |11 - fourfold           |</span>
+<span class="sd">        +------------------------+</span>
+
+<span class="sd">        :param msg: daq message</span>
+<span class="sd">        :type msg: str</span>
+<span class="sd">        :returns: bool</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;DC &#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">25</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+
+            <span class="n">coincidence_time</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">msg</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;=&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="nb">bin</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">3</span><span class="p">:],</span> <span class="mi">16</span><span class="p">))[</span><span class="mi">2</span><span class="p">:]</span><span class="o">.</span><span class="n">zfill</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+            <span class="n">veto_config</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">coincidence_config</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="mi">4</span><span class="p">]</span>
+            <span class="n">channel_config</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="mi">4</span><span class="p">:</span><span class="mi">8</span><span class="p">]</span>
+
+            <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;gate_width&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">coincidence_time</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span> <span class="o">*</span> <span class="mi">10</span><span class="p">)</span>
+
+            <span class="c"># set default veto config</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;veto&quot;</span><span class="p">,</span> <span class="bp">True</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;veto_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="bp">False</span><span class="p">)</span>
+
+            <span class="c"># update channel config</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+                <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;active_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span>
+                               <span class="n">channel_config</span><span class="p">[</span><span class="mi">3</span> <span class="o">-</span> <span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;1&#39;</span><span class="p">)</span>
+
+            <span class="c"># update coincidence config</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">seq</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="s">&#39;00&#39;</span><span class="p">,</span> <span class="s">&#39;01&#39;</span><span class="p">,</span> <span class="s">&#39;10&#39;</span><span class="p">,</span> <span class="s">&#39;11&#39;</span><span class="p">]):</span>
+                <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;coincidence</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,</span>
+                               <span class="n">coincidence_config</span> <span class="o">==</span> <span class="n">seq</span><span class="p">)</span>
+
+            <span class="c"># update veto config</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">seq</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="s">&#39;00&#39;</span><span class="p">,</span> <span class="s">&#39;01&#39;</span><span class="p">,</span> <span class="s">&#39;10&#39;</span><span class="p">,</span> <span class="s">&#39;11&#39;</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="n">veto_config</span> <span class="o">==</span> <span class="n">seq</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;veto&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">update_setting</span><span class="p">(</span><span class="s">&quot;veto_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="bp">True</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;gate width timew indow </span><span class="si">%d</span><span class="s"> ns&#39;</span> <span class="o">%</span>
+                              <span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;gate_width&quot;</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got channel configurations: </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span>
+                              <span class="nb">tuple</span><span class="p">([</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;active_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+                                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got coincidence configurations: </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span>
+                              <span class="nb">tuple</span><span class="p">([</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;coincidence</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+                                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Got veto configurations: </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s"> </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span>
+                              <span class="nb">tuple</span><span class="p">([</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;veto&quot;</span><span class="p">)]</span> <span class="o">+</span>
+                                    <span class="p">[</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;veto_ch</span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+                                     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]))</span>
+
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">False</span>
+</div>
+<div class="viewcode-block" id="Application.process_incoming"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.process_incoming">[docs]</a>    <span class="k">def</span> <span class="nf">process_incoming</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This functions gets everything out of the daq.</span>
+
+<span class="sd">        Handles all the messages currently in the daq</span>
+<span class="sd">        and passes the results to the corresponding widgets.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">data_available</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">daq</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">DAQIOError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Queue empty!&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">None</span>
+
+            <span class="c"># make daq msg public for child widgets</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_daq_msg</span> <span class="o">=</span> <span class="n">msg</span>
+
+            <span class="c"># Check contents of message and do what it says</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;daq&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+            
+            <span class="n">gps_widget</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;gps&quot;</span><span class="p">)</span>
+
+            <span class="c"># try to extract GPS information if widget is active and enabled</span>
+            <span class="k">if</span> <span class="n">gps_widget</span><span class="o">.</span><span class="n">active</span><span class="p">()</span> <span class="ow">and</span> <span class="n">gps_widget</span><span class="o">.</span><span class="n">isEnabled</span><span class="p">():</span>
+                <span class="n">gps_widget</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+                <span class="k">continue</span>
+                
+            <span class="n">status_widget</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;status&quot;</span><span class="p">)</span>
+
+            <span class="c"># update status widget if active</span>
+            <span class="k">if</span> <span class="n">status_widget</span><span class="o">.</span><span class="n">isVisible</span><span class="p">()</span> <span class="ow">and</span> <span class="n">status_widget</span><span class="o">.</span><span class="n">active</span><span class="p">():</span>
+                <span class="n">status_widget</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+
+            <span class="n">decay_widget</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;decay&quot;</span><span class="p">)</span>
+
+            <span class="c"># update previous coincidence config on decay widget if active</span>
+            <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;DC&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">decay_widget</span><span class="o">.</span><span class="n">active</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">split_msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot; &quot;</span><span class="p">)</span>
+                    <span class="n">t_03</span> <span class="o">=</span> <span class="n">split_msg</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">t_02</span> <span class="o">=</span> <span class="n">split_msg</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&quot;=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">decay_widget</span><span class="o">.</span><span class="n">set_previous_coincidence_times</span><span class="p">(</span><span class="n">t_03</span><span class="p">,</span> <span class="n">t_02</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;Wrong DC command.&#39;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="c"># check for threshold information</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_thresholds_from_msg</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c"># check for channel configuration</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_channels_from_msg</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c"># ignore status messages</span>
+            <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">&#39;ST&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c"># calculate rate</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_widget</span><span class="p">(</span><span class="s">&quot;rate&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">calculate</span><span class="p">():</span>
+                <span class="k">continue</span>
+
+            <span class="c"># extract pulses if needed</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">get_setting</span><span class="p">(</span><span class="s">&quot;write_pulses&quot;</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_widget_active</span><span class="p">(</span><span class="s">&quot;pulse&quot;</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_widget_active</span><span class="p">(</span><span class="s">&quot;decay&quot;</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">is_widget_active</span><span class="p">(</span><span class="s">&quot;velocity&quot;</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pulses</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+            <span class="c"># trigger calculation on all pulse widgets</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calculate_pulses</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Application.calculate_pulses"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.calculate_pulses">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_pulses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs the calculate function of pulse widgets if they are active</span>
+<span class="sd">        and pulses are available.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">widget</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pulse_widgets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">widget</span><span class="o">.</span><span class="n">active</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pulses</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">):</span>
+                <span class="n">widget</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pulses</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="Application.update_dynamic"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.update_dynamic">[docs]</a>    <span class="k">def</span> <span class="nf">update_dynamic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update dynamic widgets.</span>
+
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">widget</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_widgets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">widget</span><span class="o">.</span><span class="n">active</span><span class="p">():</span>
+                <span class="n">widget</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="Application.closeEvent"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.Application.closeEvent">[docs]</a>    <span class="k">def</span> <span class="nf">closeEvent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ev</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Is triggered when it is attempted to close the application.</span>
+<span class="sd">        Will perform some cleanup before closing.</span>
+
+<span class="sd">        :param ev: event</span>
+<span class="sd">        :type ev: QtGui.QCloseEvent</span>
+<span class="sd">        :returns: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Attempting to close application&quot;</span><span class="p">)</span>
+
+        <span class="c"># ask kindly if the user is really sure if she/he wants to exit</span>
+        <span class="n">reply</span> <span class="o">=</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">question</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&quot;Attention!&quot;</span><span class="p">,</span>
+                                           <span class="s">&quot;Do you really want to exit?&quot;</span><span class="p">,</span>
+                                           <span class="n">QtGui</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">Yes</span> <span class="o">|</span>
+                                           <span class="n">QtGui</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">No</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reply</span> <span class="o">==</span> <span class="n">QtGui</span><span class="o">.</span><span class="n">QMessageBox</span><span class="o">.</span><span class="n">Yes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">widget_updater</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">widget</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_widgets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="c"># run finish hook on each widget, e.g. close and</span>
+                <span class="c"># rename files if necessary</span>
+                <span class="n">widget</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+
+            <span class="c"># run finish hook on pulse extractor to close and</span>
+            <span class="c"># rename pulse file</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pulse_extractor</span><span class="o">.</span><span class="n">finish</span><span class="p">()</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">SIGNAL</span><span class="p">(</span><span class="s">&#39;lastWindowClosed()&#39;</span><span class="p">))</span>
+            <span class="n">ev</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># don&#39;t close the application</span>
+            <span class="n">ev</span><span class="o">.</span><span class="n">ignore</span><span class="p">()</span>
+
+</div></div>
+<div class="viewcode-block" id="WidgetWithNameExistsError"><a class="viewcode-back" href="../../../muonic.html#muonic.gui.application.WidgetWithNameExistsError">[docs]</a><span class="k">class</span> <span class="nc">WidgetWithNameExistsError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Exception that gets raised if it is attempted to overwrite a</span>
+<span class="sd">    widget reference that already exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">muonic 3.0.0 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li>
+          <li><a href="../gui.html" >muonic.gui</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
+    </div>
+  </body>
+</html>

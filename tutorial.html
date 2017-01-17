@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>How to use muonic &mdash; muonic 2.0.0 documentation</title>
+    <title>How to use muonic &mdash; muonic 3.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '2.0.0',
+        VERSION:     '3.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,9 +23,11 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="muonic 2.0.0 documentation" href="index.html" />
+    <link rel="top" title="muonic 3.0.0 documentation" href="index.html" />
     <link rel="next" title="Fermilab DAQ - hardware documentation" href="hardware.html" />
     <link rel="prev" title="muonic setup and installation" href="setup.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <!--[if lte IE 6]>
 <link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
 <![endif]-->
@@ -48,7 +50,7 @@
         <li class="right" >
           <a href="setup.html" title="muonic setup and installation"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">muonic 2.0.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">muonic 3.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -61,7 +63,7 @@
 <h1>How to use muonic<a class="headerlink" href="#how-to-use-muonic" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="start-muonic">
 <h2>start muonic<a class="headerlink" href="#start-muonic" title="Permalink to this headline">¶</a></h2>
-<p>If you have setup muonic via the provided setup.py script or if you hav put the package somewhere in your PYTHONPATH, simply call from the terminal</p>
+<p>If you have setup muonic via the provided setup.py script or if you hav put the package somewhere in your PYTHONPATH, simple call from the terminal</p>
 <p><tt class="docutils literal"><span class="pre">muonic</span> <span class="pre">[OPTIONS]</span> <span class="pre">xy</span></tt></p>
 <p>where <tt class="docutils literal"><span class="pre">xy</span></tt> are two characters which you can choose freely. You will find this two letters occuring in automatically generated files, so that you can identify them.</p>
 <p>For help you can call</p>
@@ -70,14 +72,14 @@
 <p>[OPTIONS]</p>
 <dl class="option">
 <dt id="cmdoption-muonic-s">
-<tt class="descname">-s</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-s" title="Permalink to this definition">¶</a></dt>
+<span id="cmdoption-muonic--sim"></span><tt class="descname">-s</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--sim</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-s" title="Permalink to this definition">¶</a></dt>
 <dt id="cmdoption-muonic-arg-use">
 <span id="cmdoption-muonic-arg-so"></span><tt class="descname">use</tt><tt class="descclassname"> the simulation mode of muonic (no real data</tt><tt class="descclassname">, </tt><tt class="descname">so</tt><tt class="descclassname"> no physics behind!). This should only used for testing and developing the software</tt><a class="headerlink" href="#cmdoption-muonic-arg-use" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-muonic-d">
-<tt class="descname">-d</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-d" title="Permalink to this definition">¶</a></dt>
+<span id="cmdoption-muonic--debug"></span><tt class="descname">-d</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--debug</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-d" title="Permalink to this definition">¶</a></dt>
 <dt id="cmdoption-muonic-arg-debug">
 <tt class="descname">debug</tt><tt class="descclassname"> mode. Use it to generate more log messages on the console.</tt><a class="headerlink" href="#cmdoption-muonic-arg-debug" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -93,16 +95,30 @@
 
 <dl class="option">
 <dt id="cmdoption-muonic-p">
-<tt class="descname">-p</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-p" title="Permalink to this definition">¶</a></dt>
+<span id="cmdoption-muonic--writepulses"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--writepulses</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-p" title="Permalink to this definition">¶</a></dt>
 <dt id="cmdoption-muonic-arg-automatically">
 <tt class="descname">automatically</tt><tt class="descclassname"> write a file with pulsetimes in a non hexadecimal representation</tt><a class="headerlink" href="#cmdoption-muonic-arg-automatically" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="option">
 <dt id="cmdoption-muonic-n">
-<tt class="descname">-n</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-n" title="Permalink to this definition">¶</a></dt>
+<span id="cmdoption-muonic--nostatus"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--nostatus</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-n" title="Permalink to this definition">¶</a></dt>
 <dt id="cmdoption-muonic-arg-supress">
 <span id="cmdoption-muonic-arg-might"></span><tt class="descname">supress</tt><tt class="descclassname"> any status messages in the output raw data file</tt><tt class="descclassname">, </tt><tt class="descname">might</tt><tt class="descclassname"> be useful if you want use muonic only for data taking and use another script afterwards for analysis.</tt><a class="headerlink" href="#cmdoption-muonic-arg-supress" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-muonic-v">
+<span id="cmdoption-muonic--version"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-muonic-v" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-muonic-arg-just">
+<tt class="descname">just</tt><tt class="descclassname"> print the current version of muonic</tt><a class="headerlink" href="#cmdoption-muonic-arg-just" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-muonic-P">
+<tt class="descname">-P</tt><tt class="descclassname"> DATA_PATH</tt><a class="headerlink" href="#cmdoption-muonic-P" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-muonic-arg-define">
+<tt class="descname">define</tt><tt class="descclassname"> an output directory for the files written by muonic. Default is $HOME/muonic_data</tt><a class="headerlink" href="#cmdoption-muonic-arg-define" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -114,22 +130,28 @@
 <p class="last">currently all files are saved under $HOME/muonic_data. This directory must exist. If you use the provided setup script, it is created automatically</p>
 </div>
 <p><cite>YYYY-MM-DD_HH-MM-SS_TYPE_MEASUREMENTTME_xy</cite></p>
-<ul class="simple">
-<li><cite>YYYY-MM-DD</cite> is the date of the measurement start</li>
-<li><cite>HH-MM-SS</cite> is the GMT time of the measurement start</li>
-<li><cite>MEASUREMENTTIME</cite> if muonic is closed, each file gets is corresponding measurement time (in hours) assigned.</li>
-<li><cite>xy</cite> the two letters which were specified at the start of muonic</li>
-<li><cite>TYPE</cite> might be one of the following:</li>
-</ul>
-<blockquote>
-<div><ul class="simple">
-<li><cite>RAW</cite> the raw ASCII output of the DAQ card, this is only saved if the &#8216;Save to file&#8217; button in clicked in the &#8216;Daq output&#8217; window of muonic</li>
-<li><cite>R</cite> is an automatically saved ASCII file which contains the rate measurement data, this can then be used to plot with e.g. gnuplot later on</li>
-<li><cite>L</cite> specifies a file with times of registered muon decays. This file is automatically saved if a muon decay measurement is started.</li>
+<ul>
+<li><p class="first"><cite>YYYY-MM-DD</cite> is the date of the measurement start</p>
+</li>
+<li><p class="first"><cite>HH-MM-SS</cite> is the GMT time of the measurement start</p>
+</li>
+<li><p class="first"><cite>MEASUREMENTTIME</cite> if muonic is closed, each file gets is corresponding measurement time (in hours) assigned.</p>
+</li>
+<li><p class="first"><cite>xy</cite> the two letters which were specified at the start of muonic</p>
+</li>
+<li><dl class="first docutils">
+<dt><cite>TYPE</cite> can be one of the following:</dt>
+<dd><ul class="first last simple">
+<li><cite>DAQ</cite> the raw ASCII output of the DAQ card, this is only saved if the &#8216;Save to file&#8217; button in clicked in the &#8216;Daq output&#8217; window of muonic. See the documentation of the [DAQ card (pdf)](<a class="reference external" href="http://crd.yerphi.am/files/QNetdescription.pdf">http://crd.yerphi.am/files/QNetdescription.pdf</a>) for more information on the output.</li>
+<li><cite>R</cite> is an automatically saved ASCII file which contains the rate measurement data, this can then be used to plot with e.g. gnuplot later on. Rates as well as total counts for all channels and the trigger are given in pre-defined time intervals (default: 5 seconds).</li>
+<li><cite>D</cite> specifies a file with times of registered muon decays. This file is automatically saved if a muon decay measurement is started.</li>
+<li><cite>V</cite> stands for the output of a muon velocity measurement. Each line contains the measurement time and the measured flight time of a muon event.</li>
 <li><cite>P</cite> stands for a file which contains a non-hex representation of the registered pulses. This file is only save if the <cite>-p</cite> option is given at the start of muonic</li>
 </ul>
-</div></blockquote>
-<p>Representation of the pulses:</p>
+</dd>
+</dl>
+</li>
+</ul>
 <p><cite>(69.15291364, [(0.0, 12.5)], [(2.5, 20.0)], [], [])</cite></p>
 <p>This is a python-tuple which contains the triggertime of the event and four lists with more tuples. The lists represent the channels (0-3 from left to right) and each tuple stands for a leading and a falling edge of a registered pulse. To get the exact time of the pulse start, one has to add the pulse LE and FE times to the triggertime</p>
 <div class="admonition note">
@@ -146,11 +168,10 @@ Please keep this limited precision in mind when adding CPLD and TMC times.</p>
 <p>For DAQ setup it is recommended to use the &#8216;settings&#8217; menu, allthough everything can also be setup via the command line in the DAQ output window (see below.)
 Muonic translates the chosen settings to the corresponding DAQ commands and sends them to the DAQ. So if you want to change things like the coincidence time window, you have to issue the corresponding DAQ command in the DAQ output window.</p>
 <p>Two menu items are of interest here:
-* Channel Configuration: Enable the channels here and set coincidence settings. A veto channel can also be specified.
-*
-.. note:</p>
-<div class="highlight-python"><div class="highlight"><pre>You have to ensure that the checkboxes for the channels you want to use are checked before you leave this dialogue, otherwise the channel gets deactivated.
-</pre></div>
+* Channel Configuration: Enable the channels here and set coincidence settings. A veto channel can also be specified.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You have to ensure that the checkboxes for the channels you want to use are checked before you leave this dialogue, otherwise the channel gets deactivated.</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -200,7 +221,7 @@ In the block on the right side of the tab, the average rates are displayed since
 </div>
 <div class="section" id="muon-velocity">
 <h3>Muon Velocity<a class="headerlink" href="#muon-velocity" title="Permalink to this headline">¶</a></h3>
-<p>In this tab the muon velocity can be measured. The measurement can be started with activating the checkbox. In the following popup window it has to be configured.</p>
+<p>In this tab the muon velocity can be measured. The measurement can be started with activating the check box. In the following popup window it has to be configured. The muon velocity widget will measure the signal times between two given channels which can be interpreted as the flight time of the muon from one detector plate to the other. The resulting histogram shows the distribution of flight times. The mean flight time can be calculated by using the fit button to fit a gaussian distribution.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last">The error of the fit might be wrong!</p>
@@ -292,12 +313,12 @@ To issue such an command periodically, you can use the button &#8216;Periodic Ca
         <li class="right" >
           <a href="setup.html" title="muonic setup and installation"
              >previous</a> |</li>
-        <li><a href="index.html">muonic 2.0.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">muonic 3.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
     </div>
   </body>
 </html>

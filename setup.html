@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>muonic setup and installation &mdash; muonic 2.0.0 documentation</title>
+    <title>muonic setup and installation &mdash; muonic 3.0.0 documentation</title>
     
     <link rel="stylesheet" href="_static/pyramid.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '2.0.0',
+        VERSION:     '3.0.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,9 +23,11 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="muonic 2.0.0 documentation" href="index.html" />
+    <link rel="top" title="muonic 3.0.0 documentation" href="index.html" />
     <link rel="next" title="How to use muonic" href="tutorial.html" />
     <link rel="prev" title="muonic - a python gui for QNET experiments" href="intro.html" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <!--[if lte IE 6]>
 <link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
 <![endif]-->
@@ -48,7 +50,7 @@
         <li class="right" >
           <a href="intro.html" title="muonic - a python gui for QNET experiments"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">muonic 2.0.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">muonic 3.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -71,7 +73,15 @@
 <li>python-numpy</li>
 <li>python-qt4</li>
 <li>python-serial</li>
+<li>python-future</li>
 </ul>
+</div>
+<div class="section" id="installation-with-pip">
+<h2>installation with pip<a class="headerlink" href="#installation-with-pip" title="Permalink to this headline">¶</a></h2>
+<p>Muonic can be installed using pip via</p>
+<p><cite>pip install muonic</cite>.</p>
+<p>Pip will try to install all necessary dependencies as python packages. It can happen that all packages are already installed, e.g. as Ubuntu packages, but not in the same version as available in PyPI. In this case, pip will install the newest version from pypi. If you would like to avoid this, make sure that all dependencies are met and use
+<cite>pip install &#8211;no-deps muonic</cite>.</p>
 </div>
 <div class="section" id="installation-with-the-setup-py-script">
 <h2>installation with the setup.py script<a class="headerlink" href="#installation-with-the-setup-py-script" title="Permalink to this headline">¶</a></h2>
@@ -89,6 +99,11 @@ You can do this by typing</p>
 <p>Afterwards you have to create the folder <cite>muonic_data</cite> in your home directory.</p>
 <p><cite>mkdir ~/muonic_data</cite></p>
 </div>
+<div class="section" id="preparing-your-computer-to-connect-to-the-daq-card">
+<h2>preparing your computer to connect to the DAQ card<a class="headerlink" href="#preparing-your-computer-to-connect-to-the-daq-card" title="Permalink to this headline">¶</a></h2>
+<p>The DAQ card uses a serial connection via the USB port. If muonic does not find the DAQ card even though it is connected to the computer, try adding the user that you use for login to the group dialout:</p>
+<p><cite>sudo adduser username dialout</cite>.</p>
+</div>
 </div>
 
 
@@ -101,8 +116,10 @@ You can do this by typing</p>
   <ul>
 <li><a class="reference internal" href="#">muonic setup and installation</a><ul>
 <li><a class="reference internal" href="#prerequesitories">prerequesitories</a></li>
+<li><a class="reference internal" href="#installation-with-pip">installation with pip</a></li>
 <li><a class="reference internal" href="#installation-with-the-setup-py-script">installation with the setup.py script</a></li>
 <li><a class="reference internal" href="#installing-muonic-without-the-setup-script">installing muonic without the setup script</a></li>
+<li><a class="reference internal" href="#preparing-your-computer-to-connect-to-the-daq-card">preparing your computer to connect to the DAQ card</a></li>
 </ul>
 </li>
 </ul>
@@ -145,12 +162,12 @@ You can do this by typing</p>
         <li class="right" >
           <a href="intro.html" title="muonic - a python gui for QNET experiments"
              >previous</a> |</li>
-        <li><a href="index.html">muonic 2.0.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">muonic 3.0.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2012, robert.franke,achim.stoessl,basho.kaminsky.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.3.
     </div>
   </body>
 </html>

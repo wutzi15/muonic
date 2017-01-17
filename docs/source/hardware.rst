@@ -1,6 +1,8 @@
 Fermilab DAQ - hardware documentation
 ======================================
 
+Below is an overview of the DAQ card specifications and its output. A detailed documentation can be found at `<http://crd.yerphi.am/files/QNetdescription.pdf>`_.
+
 ASCII DAQ output format
 --------------------------
 

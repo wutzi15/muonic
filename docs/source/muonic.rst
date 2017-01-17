@@ -29,7 +29,7 @@ daq i/o with muonic.daq
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Control the two I/O threads which communicate with the DAQ. If the simulated DAQ is used, there is only one thread.
 
-.. automodule:: muonic.daq.DAQProvider
+.. automodule:: muonic.daq.provider
    :members:
    :undoc-members:
    :private-members:
@@ -41,18 +41,18 @@ Control the two I/O threads which communicate with the DAQ. If the simulated DAQ
 
 The module provides a class which uses python-serial to open a connection over the usb ports to the daq card. Since on LINUX systems the used usb device ( which is usually /dev/tty0 ) might change during runtime, this is catched automatically by DaqConnection. Therefore a shell script is invoked.
 
-.. automodule:: muonic.daq.DaqConnection
+.. automodule:: muonic.daq.connection
    :members:
    :undoc-members:
    :private-members:
 
 
-`muonic.daq.SimDaqConnection`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+`muonic.daq.DAQSimulationConnection`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This module provides a dummy class which simulates DAQ I/O which is read from the file "simdaq.txt".
 The simulation is only useful if the software-gui should be tested, but no DAQ card is available
 
-.. automodule:: muonic.daq.SimDaqConnection
+.. automodule:: muonic.daq.simulation
    :members:
    :undoc-members:
    :private-members:
@@ -66,25 +66,25 @@ This package contains all gui relevant classes like dialogboxes and tabwidgets. 
 .. automodule:: muonic.gui
    :members:
 
-`muonic.gui.MainWindow`
+`muonic.gui.Application`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 Contains the  "main" gui application. It Provides the MainWindow, which initializes the different tabs and draws a menu. 
 
 
-.. automodule:: muonic.gui.MainWindow
+.. automodule:: muonic.gui.application
    :members:
    :undoc-members:
    :private-members:
 
-`muonic.gui.MuonicWidgets`
+`muonic.gui.widgets`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The functionality of the software
 
 
 
-.. automodule:: muonic.gui.MuonicWidgets
+.. automodule:: muonic.gui.widgets
    :members:
    :undoc-members:
    :private-members:
@@ -92,16 +92,16 @@ The functionality of the software
 
 
 
-`muonic.gui.MuonicDialogs`
+`muonic.gui.dialogs`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: muonic.gui.MuonicDialogs
+.. automodule:: muonic.gui.dialogs
    :members:
    :undoc-members:
    :private-members:
 
-`muonic.gui.MuonicPlotCanvases`
+`muonic.gui.plot_canvases`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: muonic.gui.MuonicPlotCanvases
+.. automodule:: muonic.gui.plot_canvases
    :members:
    :undoc-members:
    :private-members:
@@ -116,12 +116,12 @@ analyis package muonic.analysis
    :members:
 
 
-`muonic.analysis.PulseAnalyzer`
+`muonic.analysis.analyzer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Transformation of ASCII DAQ data. Combination of Pulses to events, and looking for decaying muons with different trigger condi
+Transformation of ASCII DAQ data. Combination of Pulses to events as well as implementation of software triggers for the muon decay and the muon velocity measurement
 
-.. automodule:: muonic.analysis.PulseAnalyzer
+.. automodule:: muonic.analysis.analyzer
    :members:
    :undoc-members:
    :private-members:
@@ -135,5 +135,3 @@ Provide a fitting routine
    :members:
    :undoc-members:
    :private-members:
-
-

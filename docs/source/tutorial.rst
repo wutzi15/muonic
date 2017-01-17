@@ -20,21 +20,27 @@ which gives you also an overview abot the options.
 
 [OPTIONS]
 
-.. option:: -s
+.. option:: -s, --sim
    use the simulation mode of muonic (no real data, so no physics behind!). This should only used for testing and developing the software
 
-.. option:: -d
+.. option:: -d, --debug
    debug mode. Use it to generate more log messages on the console.
 
 .. option:: -t sec
    change the timewindow for the calculation of the rates. If you expect very low rates, you might consider to change it to larger values.
    default is 5 seconds.
 
-.. option:: -p
+.. option:: -p, --writepulses
    automatically write a file with pulsetimes in a non hexadecimal representation
 
-.. option:: -n
+.. option:: -n, --nostatus
    supress any status messages in the output raw data file, might be useful if you want use muonic only for data taking and use another script afterwards for analysis.
+
+.. option:: -v, --version
+   just print the current version of muonic
+
+.. option:: -P DATA_PATH
+   define an output directory for the files written by muonic. Default is $HOME/muonic_data
 
 
 Saving files with muonic
@@ -51,12 +57,12 @@ All files which are saved by muonic are ASCII files. The filenames are as follow
 * `HH-MM-SS` is the GMT time of the measurement start
 * `MEASUREMENTTIME` if muonic is closed, each file gets is corresponding measurement time (in hours) assigned.
 * `xy` the two letters which were specified at the start of muonic
-* `TYPE` might be one of the following:
- * `RAW` the raw ASCII output of the DAQ card, this is only saved if the 'Save to file' button in clicked in the 'Daq output' window of muonic
- * `R` is an automatically saved ASCII file which contains the rate measurement data, this can then be used to plot with e.g. gnuplot later on 
- * `L` specifies a file with times of registered muon decays. This file is automatically saved if a muon decay measurement is started.
- * `P` stands for a file which contains a non-hex representation of the registered pulses. This file is only save if the `-p` option is given at the start of muonic
-Representation of the pulses:
+* `TYPE` can be one of the following:
+	* `DAQ` the raw ASCII output of the DAQ card, this is only saved if the 'Save to file' button in clicked in the 'Daq output' window of muonic. See the documentation of the [DAQ card (pdf)](http://crd.yerphi.am/files/QNetdescription.pdf) for more information on the output.
+	* `R` is an automatically saved ASCII file which contains the rate measurement data, this can then be used to plot with e.g. gnuplot later on. Rates as well as total counts for all channels and the trigger are given in pre-defined time intervals (default: 5 seconds).
+	* `D` specifies a file with times of registered muon decays. This file is automatically saved if a muon decay measurement is started.
+	* `V` stands for the output of a muon velocity measurement. Each line contains the measurement time and the measured flight time of a muon event.
+	* `P` stands for a file which contains a non-hex representation of the registered pulses. This file is only save if the `-p` option is given at the start of muonic
 
 `(69.15291364, [(0.0, 12.5)], [(2.5, 20.0)], [], [])`
 
@@ -78,7 +84,7 @@ Muonic translates the chosen settings to the corresponding DAQ commands and send
 
 Two menu items are of interest here:
 * Channel Configuration: Enable the channels here and set coincidence settings. A veto channel can also be specified.
-* 
+ 
 .. note::
    You have to ensure that the checkboxes for the channels you want to use are checked before you leave this dialogue, otherwise the channel gets deactivated.
 
@@ -120,7 +126,7 @@ The measurment can be activated with the checkbox. In the following popup window
 Muon Velocity
 ~~~~~~~~~~~~~
 
-In this tab the muon velocity can be measured. The measurement can be started with activating the checkbox. In the following popup window it has to be configured.
+In this tab the muon velocity can be measured. The measurement can be started with activating the check box. In the following popup window it has to be configured. The muon velocity widget will measure the signal times between two given channels which can be interpreted as the flight time of the muon from one detector plate to the other. The resulting histogram shows the distribution of flight times. The mean flight time can be calculated by using the fit button to fit a gaussian distribution.
 
 .. warning::
    The error of the fit might be wrong!

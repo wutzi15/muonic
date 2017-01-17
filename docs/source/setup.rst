@@ -15,7 +15,17 @@ muonic needs the following packages to be installed (list may not be complete!)
 * python-numpy
 * python-qt4
 * python-serial
+* python-future
 
+installation with pip
+---------------------
+
+Muonic can be installed using pip via
+
+`pip install muonic`.
+
+Pip will try to install all necessary dependencies as python packages. It can happen that all packages are already installed, e.g. as Ubuntu packages, but not in the same version as available in PyPI. In this case, pip will install the newest version from pypi. If you would like to avoid this, make sure that all dependencies are met and use
+`pip install --no-deps muonic`.
 
 installation with the setup.py script
 ---------------------------------------
@@ -42,3 +52,9 @@ Afterwards you have to create the folder `muonic_data` in your home directory.
 
 `mkdir ~/muonic_data`
 
+preparing your computer to connect to the DAQ card
+--------------------------------------------------
+
+The DAQ card uses a serial connection via the USB port. If muonic does not find the DAQ card even though it is connected to the computer, try adding the user that you use for login to the group dialout:
+
+`sudo adduser username dialout`.

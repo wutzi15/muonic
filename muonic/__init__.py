@@ -26,7 +26,7 @@ __description__ = ("Software to work with QNet DAQ cards. " +
                    "This is a TRUNK version")
 
 __source_location__ = "https://github.com/CosmicLabDESY/muonic/"
-__docs_hosted_at__ = "http://achim1.github.io/muonic/"
+__docs_hosted_at__ = "https://cosmiclabdesy.github.io/muonic/"
 __download_url__ = ("https://github.com/CosmicLabDESY/muonic/archive/" +
                     "release2.zip")
 __manual_hosted_at__ = ("http://physik-begreifen-zeuthen.desy.de/angebote/" +

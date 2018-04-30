@@ -124,6 +124,23 @@ class BaseWidget(QtGui.QWidget):
             return self.parent.last_daq_msg
         return None
 
+    def daq_get_last_pressure_temperature(self):
+
+	msgStack = []
+
+	while self.parent.daq.data_available():
+
+	    try: msgStack.append(self.parent.daq.get(0))
+	    except DAQIOError:
+		self.parent.logger.debug("Error, no element on stack")
+
+	#for i in range(0,len(msgStack)):
+	#    print("Line: " + str(i) + " : " + msgStack[i])
+
+	a=[msgStack[3], msgStack[5]]
+
+        return a
+
     def finish(self):
         """
         Gets called upon closing application. Implement cleanup routines like
@@ -289,6 +306,8 @@ class RateWidget(BaseWidget):
         self.last_query_time = self.query_time
         self.daq_put("DS")
         self.query_time = time.time()
+        self.daq_put("ba")
+	self.daq_put("th")
 
     def extract_scalars_from_message(self, msg):
         """
@@ -317,6 +336,10 @@ class RateWidget(BaseWidget):
         :returns: bool
         """
         msg = self.daq_get_last_msg()
+
+        msg2=self.daq_get_last_pressure_temperature()
+        pressure=float(msg2[0].split()[4])
+        temp	=float(msg2[1].split("=")[1])
 
         if not (len(msg) >= 2 and msg.startswith("DS")):
             return False
@@ -373,13 +396,13 @@ class RateWidget(BaseWidget):
             try:
                 utcdt = datetime.datetime.utcfromtimestamp(self.query_time)
                 self.data_file.write(
-                    "%s %f %f %f %f %f %f %f %f %f %f %f \n" %
+                    "%s %f %f %f %f %f %f %f %f %f %f %f %f %f \n" %
                         (utcdt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                          self.rates[0], self.rates[1], self.rates[2],
                          self.rates[3], self.rates[4],
                          scalar_diffs[0], scalar_diffs[1],
                          scalar_diffs[2], scalar_diffs[3], scalar_diffs[4],
-                         self.rates[5]))
+                         self.rates[5], pressure, temp))
 
                 self.logger.debug("Rate plot data was written to %s" %
                                   repr(self.data_file))
@@ -492,7 +515,8 @@ class RateWidget(BaseWidget):
         if self.first_run:
             self.data_file.write("year month day hour minutes second milliseconds" +
                                  " | R0 | R1 | R2 | R3 | R trigger | " +
-                           " chan0 | chan1 | chan2 | chan3 | trigger | Delta_time\n")
+                                 " chan0 | chan1 | chan2 | chan3 | trigger | Delta_time |" +
+                                 " Pressure [mBar] |Temperature [C] |\n")
             self.first_run = False
 
         # determine type of measurement
